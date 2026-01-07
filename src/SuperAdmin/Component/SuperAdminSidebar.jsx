@@ -124,7 +124,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
               </button>
             </li>
 
-            <li>
+            {/* <li>
               <button
                 onClick={() => handleNavClick('Profile', '/SuperAdmin-Dashboard/Profile')}
                 className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors
@@ -133,7 +133,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
                 <Building2 size={20} />
                 <span>Profile</span>
               </button>
-            </li>
+            </li> */}
 
             <li>
               <button

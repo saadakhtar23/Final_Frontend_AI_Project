@@ -110,13 +110,13 @@ const SuperAdminLogin = () => {
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-center mb-2">
+                    {/* <div className="flex items-center justify-center mb-2">
                         <hr className="w-1/3 border-gray-300" />
                         <span className="mx-2 text-gray-500">OR</span>
                         <hr className="w-1/3 border-gray-300" />
-                    </div>
+                    </div> */}
 
-                    <button className="flex items-center justify-center w-full border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition-colors mb-2">
+                    {/* <button className="flex items-center justify-center w-full border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition-colors mb-2">
                         Sign in with Google
                     </button>
 
@@ -125,7 +125,7 @@ const SuperAdminLogin = () => {
                         <a href="#" className="text-blue-600 hover:underline">
                             Sign In
                         </a>
-                    </p>
+                    </p> */}
                 </div>
             </div>
         </div>

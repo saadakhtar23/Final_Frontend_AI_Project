@@ -186,7 +186,7 @@ function EnquiryMessages() {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th> */}
                                 </tr>
                             </thead>
 
@@ -237,7 +237,7 @@ function EnquiryMessages() {
                                             </td>
 
                                             {/* Actions */}
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => handleEditClick(ticket)} className="text-blue-600 hover:text-blue-800">
                                                         <Edit className="w-4 h-4" />
@@ -246,7 +246,7 @@ function EnquiryMessages() {
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
-                                            </td>
+                                            </td> */}
                                         </tr>
                                     ))
                                 )}

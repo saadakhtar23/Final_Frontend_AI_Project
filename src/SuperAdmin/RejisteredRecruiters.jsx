@@ -211,11 +211,11 @@ function RejisteredRecruiters() {
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
-                                                    <button
+                                                    {/* <button
                                                     onClick={() => navigate("/SuperAdmin-Dashboard/RejisteredRecruiters/CompanieDetail", { state: { company: register } })}
                                                     className="px-3 py-1 text-sm text-green-700 bg-white hover:bg-green-50 rounded border border-green-700 transition-colors font-medium">
                                                         Update
-                                                    </button>
+                                                    </button> */}
                                                 </div>
                                             </td>
                                         </tr>
