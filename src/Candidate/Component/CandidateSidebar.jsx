@@ -4,7 +4,8 @@ import {
   Home,
   UserPlus,
   Building2,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
@@ -27,6 +28,15 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
   const handleNavClick = (name, path) => {
     setActiveNav(name);
     navigate(path);
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('token');
+      // preserve any other app-level data if needed
+    } catch (e) {}
+    if (onToggle) onToggle();
+    navigate('/');
   };
 
 
@@ -70,7 +80,7 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
                 <span>Dashboard</span>
               </button>
             </li>
-
+            
             <li>
               <button
                 onClick={() => handleNavClick('AllJds', '/Candidate-Dashboard/AllJds')}
@@ -115,6 +125,15 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
               </button>
             </li>
 
+            <li>
+              <button
+                onClick={handleLogout}
+                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors hover:bg-white hover:text-black text-left`}
+              >
+                <LogOut size={20} />
+                <span>Logout</span>
+              </button>
+            </li>
 
 
           </ul>

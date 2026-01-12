@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Timer from '../../RecruiterAdmin/Component/Timer.jsx';
 import aiAvatar from '../../img/interviewer.png';
 import WebcamPreview from '../Component/WebcamPreview';
 import * as blazeface from '@tensorflow-models/blazeface';
@@ -14,6 +15,9 @@ export default function AudioInterview({
   showMultipleFaces = false,
   faceEventRef = null,
   showTabSwitch = false,
+  remainingTime = null,
+  onAudioTimeUp = null,
+  updateRemainingTime = null,
 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -483,8 +487,10 @@ export default function AudioInterview({
                 <div className="text-xs text-slate-500">Camera & mic ON</div>
               </div>
             </div>
+              <div className="flex items-center gap-3">
+                <Timer timeLeft={typeof remainingTime === 'number' ? remainingTime : null} onTimeUp={() => { if (onAudioTimeUp) onAudioTimeUp(); }} />
 
-            <select
+                <select
               value={answerLanguage}
               onChange={(e) => setAnswerLanguage(e.target.value)}
               className="border rounded px-2 py-1 text-sm"
@@ -492,7 +498,8 @@ export default function AudioInterview({
               <option value="en">English</option>
               <option value="hi">हिंदी</option>
             </select>
-          </div>
+              </div>
+            </div>
 
           <div className="flex-1 bg-black rounded overflow-hidden">
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />

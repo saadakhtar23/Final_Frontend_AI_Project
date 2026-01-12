@@ -162,10 +162,42 @@ export default function TestDetail({
     // only run when jobDetails changes
   }, [formData.jobDetails]);
 
-  const timeSlots = [
-    '10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM',
-    '2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM'
-  ];
+  // Generate time slots starting at next half-hour from now, in 30-minute steps until 5:00 PM
+  const format12 = (date) => {
+    const h = date.getHours();
+    const m = date.getMinutes();
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    const minute = m.toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minute} ${ampm}`;
+  };
+
+  const generateTimeSlots = () => {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    // round up to next half-hour
+    let addMinutes = 0;
+    if (minutes === 0) addMinutes = 30; // 11:00 -> 11:30
+    else if (minutes <= 30) addMinutes = 30 - minutes; // 11:10 -> 11:30
+    else addMinutes = 60 - minutes; // 11:40 -> 12:00
+
+    const start = new Date(now.getTime() + addMinutes * 60000);
+    start.setSeconds(0, 0);
+
+    const end = new Date(start);
+    end.setHours(24, 0, 0, 0); // 5:00 PM end
+
+    const slots = [];
+    const cur = new Date(start);
+    // If start is after end, provide at least the next day's 5pm? For now return empty
+    while (cur <= end) {
+      slots.push(format12(cur));
+      cur.setMinutes(cur.getMinutes() + 30);
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
 
   useEffect(() => {
     if (showScheduleModal) {

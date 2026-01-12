@@ -338,6 +338,119 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
         });
     };
 
+    // Helper to escape HTML content
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Download the current questions view as a PDF (client-side)
+    const handleDownload = async () => {
+        const title = 'Generated Questions';
+        const totalQuestions = displayQuestions.length;
+        const totalMarks = displayQuestions.reduce((sum, q) => sum + (q.marks || 0), 0);
+        const totalTime = Math.ceil(displayQuestions.reduce((sum, q) => sum + parseInt(q.time || 0), 0) / 60);
+
+        const headerHtml = `
+            <div style="padding:20px;border-bottom:1px solid #e5e7eb;margin-bottom:20px;">
+                <h1 style="margin:0;font-size:22px;font-family:Arial,Helvetica,sans-serif;color:#0f172a">${escapeHtml(title)}</h1>
+                <div style="margin-top:6px;color:#475569;font-family:Arial,Helvetica,sans-serif">Questions: ${totalQuestions}</div>
+            </div>`;
+
+        const summaryHtml = `
+            <div style="margin-bottom:18px;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
+                <h2 style="font-size:16px;margin:0 0 8px 0">Summary</h2>
+                <ul style="margin:0;padding-left:18px;color:#334155">
+                    <li>Total Questions: ${totalQuestions}</li>
+                    <li>Total Marks: ${totalMarks}</li>
+                    <li>Duration (mins): ${totalTime}</li>
+                </ul>
+            </div>`;
+
+        const questionBlocks = displayQuestions.map((q, idx) => {
+            const qTitle = `<div style="font-family:Arial,Helvetica,sans-serif;margin-bottom:6px;"><strong>Q${q.id}.</strong> ${escapeHtml(q.text)}</div>`;
+            let details = '';
+
+            // Build options / details per type
+            if (q.questionType === 'MCQ' && q.options && q.options.length) {
+                const opts = q.options.map((opt, i) => `<div style="margin-left:14px;margin-bottom:4px;">${String.fromCharCode(65 + i)}. ${escapeHtml(typeof opt === 'string' ? opt : opt)}</div>`).join('');
+                details = `<div style="font-family:Arial,Helvetica,sans-serif;color:#374151;margin-bottom:8px">${opts}</div>`;
+
+                // Determine and show correct answer when available
+                let correctText = '';
+                if (q.correctOptionText) {
+                    correctText = q.correctOptionText;
+                } else if (q.correctAnswer) {
+                    const ca = String(q.correctAnswer).trim();
+                    if (/^[A-Za-z]$/.test(ca)) {
+                        const idxC = ca.toUpperCase().charCodeAt(0) - 65;
+                        if (q.options[idxC]) correctText = (typeof q.options[idxC] === 'string' ? q.options[idxC] : q.options[idxC]);
+                        if (correctText) correctText = `${ca.toUpperCase()}. ${correctText}`;
+                    } else if (q.options.includes(ca)) {
+                        correctText = ca;
+                    }
+                }
+
+                if (correctText) {
+                    details += `<div style="font-family:Arial,Helvetica,sans-serif;color:#065f46;font-weight:600;margin-bottom:8px">Correct Answer: ${escapeHtml(correctText)}</div>`;
+                }
+
+            } else if (q.questionType === 'Coding') {
+                details = `<div style="font-family:Arial,Helvetica,sans-serif;color:#374151;margin-bottom:8px">Input: ${escapeHtml(q.input_spec || '')}<br/>Output: ${escapeHtml(q.output_spec || '')}</div>`;
+            } else if (q.questionType === 'Audio') {
+                details = `<div style="font-family:Arial,Helvetica,sans-serif;color:#374151;margin-bottom:8px">Expected Keywords: ${escapeHtml((q.expected_keywords || []).join(', '))}</div>`;
+            }
+
+            const meta = `<div style="font-family:Arial,Helvetica,sans-serif;color:#6b7280;font-size:12px;margin-bottom:20px">Time: ${q.time}s | Marks: ${q.marks || 0} | Type: ${q.questionType}</div>`;
+
+            return `<div style="margin-bottom:12px;">${qTitle}${details}${meta}</div>`;
+        }).join('');
+
+        const footer = `<div style="font-family:Arial,Helvetica,sans-serif;color:#94a3b8;margin-top:20px">Generated: ${escapeHtml(new Date().toLocaleString())}</div>`;
+
+        const bodyHtml = `<div style="width:750px;padding:20px;background:#fff">${headerHtml}${summaryHtml}${questionBlocks}${footer}</div>`;
+
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const { jsPDF } = await import('jspdf');
+
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.innerHTML = bodyHtml;
+            document.body.appendChild(container);
+
+            const canvas = await html2canvas(container, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`${title.replace(/\s+/g, '_')}.pdf`);
+
+            document.body.removeChild(container);
+        } catch (err) {
+            console.error('PDF export failed:', err);
+            try {
+                const w = window.open('', '_blank');
+                if (w) {
+                    w.document.write(bodyHtml);
+                    w.document.close();
+                    w.print();
+                }
+            } catch (e) {
+                console.error('Fallback print failed', e);
+            }
+        }
+    };
+
     const isQuestionComplete = editedData?.questionText?.trim() !== '' &&
         (editedData?.questionType !== 'MCQ' || 
          (editedData?.options?.every(opt => opt.text.trim() !== '') &&
@@ -545,13 +658,23 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
                     >
                         Back
                     </button>
-                    <button
-                        onClick={onNext}
-                        disabled={loading || displayQuestions.length === 0}
-                        className="px-6 py-2 bg-[#9157ED] text-white rounded-lg hover:bg-[#7940d6] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Next: Review & Finalize
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleDownload}
+                            disabled={loading || displayQuestions.length === 0}
+                            className="px-4 py-2 bg-[#0496FF] text-white rounded-lg hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Download PDF
+                        </button>
+
+                        <button
+                            onClick={onNext}
+                            disabled={loading || displayQuestions.length === 0}
+                            className="px-6 py-2 bg-[#9157ED] text-white rounded-lg hover:bg-[#7940d6] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next: Review & Finalize
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -506,7 +506,7 @@
 
 // export default Results;
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Eye, Trash2 } from 'lucide-react';
 import Pagination from '../components/LandingPage/Pagination';
 import ViewResults from './ViewResults'; 
@@ -557,6 +557,38 @@ function Results() {
   };
 
   const [jobs, setJobs] = useState([]);
+  const [hrJDs, setHrJDs] = useState([]);
+  const [hrRaw, setHrRaw] = useState(null);
+
+  // Fetch recruiter-created JDs and log response on page load
+  const fetchMyJDs = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${baseUrl}/api/jd/created-by/hr`, { headers });
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        console.log('[Results] /api/jd/created-by/hr response:', json);
+        // store HR response for mapping
+        const list = Array.isArray(json) ? json : (json.data || (json.data === undefined ? json : []));
+        setHrJDs(Array.isArray(list) ? list : []);
+        setHrRaw(json);
+      } catch (e) {
+        console.log('[Results] /api/jd/created-by/hr raw response:', text);
+        // fallback: if endpoint returns plain array text
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) setHrJDs(parsed);
+          setHrRaw(parsed);
+        } catch (_) {
+          setHrRaw(text);
+        }
+      }
+    } catch (e) {
+      console.error('[Results] failed to fetch recruiter JDs', e);
+    }
+  };
 
   const loadFinalized = async () => {
     setError(null);
@@ -569,7 +601,7 @@ function Results() {
         throw new Error(txt || 'Failed loading finalized tests');
       }
       const data = await res.json();
-      console.log("hii", data);
+      console.log("[Result] finalized-tests result:", data);
       
         // `data` is expected to be an array of tests from get_finalized_test
         const rawArr = Array.isArray(data) ? data : [];
@@ -598,6 +630,9 @@ function Results() {
             raw: t
           };
         });
+        console.log('[Results] mapped finalized jobs count:', mapped.length);
+        console.log('[Results] mapped finalized jobs sample:', mapped.slice(0, 5));
+        console.log('[Results] finalized counts:', counts);
         if (mountedRef.current) setJobs(mapped);
       } catch (e) {
         console.error('Failed loading finalized tests', e);
@@ -610,6 +645,7 @@ function Results() {
   useEffect(() => {
     mountedRef.current = true;
     loadFinalized();
+    fetchMyJDs();
     return () => { mountedRef.current = false };
   }, []);
 
@@ -618,11 +654,24 @@ function Results() {
     loadFinalized();
   };
 
-  const filteredJobs = jobs.filter((job) =>
-    job.jobTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  const displayedJobs = useMemo(() => {
+    if (!hrJDs || hrJDs.length === 0) return jobs;
+    return jobs.filter((j) => {
+      try {
+        const rawJobId = j.raw?.job_id || j.raw?.jobId || j.jobId || '';
+        const normalized = String(rawJobId).replace(/^#/, '');
+        return hrJDs.some((h) => String(h._id) === normalized || String(h._id) === String(j.raw?.job_id));
+      } catch (e) {
+        return false;
+      }
+    });
+  }, [jobs, hrJDs]);
+
+  const filteredJobs = displayedJobs.filter((job) =>
+    (job.jobTitle || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredJobs.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / rowsPerPage));
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredJobs.slice(indexOfFirstRow, indexOfLastRow);
@@ -891,6 +940,12 @@ function Results() {
             onPageChange={handlePageChange}
           />
         </div>
+        {/* {hrRaw && (
+          <div className="mt-4 bg-white p-4 rounded shadow">
+            <h4 className="font-semibold mb-2">HR /api/jd/created-by/hr response</h4>
+            <pre className="text-xs overflow-auto max-h-64">{typeof hrRaw === 'string' ? hrRaw : JSON.stringify(hrRaw, null, 2)}</pre>
+          </div>
+        )} */}
       </div>
       {/* Loading overlay for initial load */}
       {loading && (

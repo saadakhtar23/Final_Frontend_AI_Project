@@ -638,6 +638,34 @@ const GiveTest = ({ jdId }) => {
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
   const totalQuestionsInSection = currentSection?.questions.length || 0;
 
+  // Shared timer for the current question so it continues inside AudioInterview
+  const [questionTimeLeft, setQuestionTimeLeft] = useState(null);
+  // initialize when question changes
+  useEffect(() => {
+    const t = Number(currentQuestion?.time_limit || 60);
+    setQuestionTimeLeft(t);
+  }, [currentSectionIndex, currentQuestionIndex, currentQuestion?.id]);
+
+  // countdown managed here so it continues while AudioInterview is shown
+  useEffect(() => {
+    if (questionTimeLeft === null) return;
+    if (submitted) return;
+
+    const id = setInterval(() => {
+      setQuestionTimeLeft((prev) => (typeof prev === 'number' && prev > 0 ? prev - 1 : prev));
+    }, 1000);
+
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.id, submitted]);
+
+  // notify when time reaches zero
+  useEffect(() => {
+    if (typeof questionTimeLeft === 'number' && questionTimeLeft <= 0) {
+      try { handleTimeUp(); } catch (e) {}
+    }
+  }, [questionTimeLeft]);
+
   // clamp percent to [0,100] and compute section progress percent
   const clampPercent = (v) => Math.max(0, Math.min(100, v));
   const sectionPercent = totalQuestionsInSection
@@ -1114,6 +1142,9 @@ const GiveTest = ({ jdId }) => {
           showMultipleFaces={showMultipleFaces}
           showTabSwitch={showTabSwitch}
           sharedStream={streamRef.current || localStream}
+          remainingTime={questionTimeLeft}
+          updateRemainingTime={(t) => setQuestionTimeLeft(Number(t))}
+          onAudioTimeUp={handleTimeUp}
         />
       </>
     );
@@ -1212,7 +1243,7 @@ const GiveTest = ({ jdId }) => {
               </div>
 
               <Timer
-                timeLimit={currentQuestion?.time_limit || 60}
+                timeLeft={questionTimeLeft}
                 onTimeUp={handleTimeUp}
                 key={`${currentSectionIndex}-${currentQuestion?.id}`}
               />
@@ -1317,6 +1348,9 @@ const GiveTest = ({ jdId }) => {
                           setAudioInterviewDone(true);
                           toast.success('Audio interview completed.');
                         }}
+                        remainingTime={questionTimeLeft}
+                        updateRemainingTime={(t) => setQuestionTimeLeft(Number(t))}
+                        onAudioTimeUp={handleTimeUp}
                       />
                     ) : (
                       <div className="bg-white rounded-lg shadow-md p-6">

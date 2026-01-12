@@ -5,30 +5,39 @@
 
 import React, { useState, useEffect } from 'react';
 
-const Timer = ({ timeLimit, onTimeUp }) => {
-  const [timeLeft, setTimeLeft] = useState(timeLimit);
+const Timer = ({ timeLimit, timeLeft: controlledTimeLeft, onTimeUp }) => {
+  const [internalLeft, setInternalLeft] = useState(timeLimit || 0);
+  const isControlled = typeof controlledTimeLeft === 'number';
 
+  // keep internalLeft synced when uncontrolled mode (timeLimit changes)
   useEffect(() => {
-    setTimeLeft(timeLimit);
-  }, [timeLimit]);
+    if (!isControlled && typeof timeLimit === 'number') setInternalLeft(timeLimit);
+  }, [timeLimit, isControlled]);
 
+  // In uncontrolled mode, Timer manages its own countdown
   useEffect(() => {
-    if (timeLeft <= 0) {
-      onTimeUp();
+    if (isControlled) return;
+    if (internalLeft <= 0) {
+      onTimeUp && onTimeUp();
       return;
     }
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-
+    const timer = setInterval(() => setInternalLeft((p) => p - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, onTimeUp]);
+  }, [internalLeft, isControlled, onTimeUp]);
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+  const timeLeft = isControlled ? controlledTimeLeft : internalLeft;
 
-  const isLowTime = timeLeft <= 30;
+  useEffect(() => {
+    if (isControlled && typeof timeLeft === 'number' && timeLeft <= 0) {
+      onTimeUp && onTimeUp();
+    }
+  }, [isControlled, timeLeft, onTimeUp]);
+
+  const minutes = Math.floor((timeLeft || 0) / 60);
+  const seconds = (timeLeft || 0) % 60;
+
+  const isLowTime = (timeLeft || 0) <= 30;
 
   return (
     <div
