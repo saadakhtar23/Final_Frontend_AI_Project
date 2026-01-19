@@ -4,6 +4,7 @@ import { Search, X } from 'lucide-react';
 import Pagination from '../../components/LandingPage/Pagination';
 import axios from 'axios';
 import { baseUrl } from '../../utils/ApiConstants';
+import { log } from '@tensorflow/tfjs';
 
 function AppliedJD() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,8 @@ function AppliedJD() {
 
                 if (response.data.success) {
                     setAppliedJobs(response.data.data);
+                    console.log("skhgkhgsfhg",response.data.data);
+                    
                 }
             } catch (error) {
                 console.error('Error fetching applied JDs:', error);
@@ -189,7 +192,7 @@ function AppliedJD() {
                                                 {job?.offerId?.jobTitle}
                                             </td>
                                             <td className="px-4 py-3">
-                                                {formatDate(job.createdAt)}
+                                                {(job.appliedDate) ? formatDate(job.appliedDate) : 'N/A'}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <button
