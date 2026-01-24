@@ -220,7 +220,7 @@ export default function ReviewFinalise({ formData, questions, onFinalize, onBack
           }
          const token = localStorage.getItem("token");
          await axios.post(
-          `${baseUrl}/api/candidate/send-email/${jobIdFromLocal}`,
+          `${baseUrl}/api/candidate/send-email-shortlisted/${jobIdFromLocal}`,
           { candidateIds: candidateIdsArray, },
           {
             headers: {
