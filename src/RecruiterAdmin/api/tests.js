@@ -1,4 +1,4 @@
-const BASE_URL = "https://python-k0xt.onrender.com/api/v1";
+const BASE_URL = "https://python-k0xt.onrender.com/ai/v1";
 
 export const testApi = {
   startTest: async (questionSetId) => {
