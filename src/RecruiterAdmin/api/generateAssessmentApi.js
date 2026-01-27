@@ -32,7 +32,7 @@ class AssessmentAPI {
    */
   static async getAllFinalizedTests() {
     try {
-      const response = await fetch(`${API_BASE_URL}/finalise/finalized-tests`);
+      const response = await fetch(`${API_BASE_URL}/finalise/finalized-test`);
       if (!response.ok) {
         let errorText = await response.text();
         console.error(`Finalized tests API returned status ${response.status}:`, errorText);

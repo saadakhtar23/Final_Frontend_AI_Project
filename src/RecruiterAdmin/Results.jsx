@@ -6,6 +6,7 @@ import Pagination from '../components/LandingPage/Pagination';
 import ViewResults from './ViewResults'; 
 import SpinLoader from '../components/SpinLoader';
 import { baseUrl } from '../utils/ApiConstants';
+import { pythonUrl } from '../utils/ApiConstants';
 
 function Results() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,8 +89,7 @@ function Results() {
     setError(null);
     setLoading(true);
     try {
-      const base = window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com';
-      const res = await fetch(`${base}/api/v1/finalise/finalized-tests`);
+      const res = await fetch(`${pythonUrl}/v1/finalise/finalized-test`);
       if (!res.ok) {
         const txt = await res.text().catch(() => 'Failed');
         throw new Error(txt || 'Failed loading finalized tests');
