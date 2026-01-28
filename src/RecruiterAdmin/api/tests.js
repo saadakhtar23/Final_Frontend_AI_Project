@@ -1,4 +1,5 @@
-const BASE_URL = "https://python-k0xt.onrender.com/ai/v1";
+import { pythonUrl } from "../../utils/ApiConstants";
+const BASE_URL = `${pythonUrl}/v1`;
 
 export const testApi = {
   startTest: async (questionSetId) => {

@@ -89,7 +89,7 @@ function Results() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${pythonUrl}/v1/finalise/finalized-test`);
+      const res = await fetch(`${pythonUrl}/v1/finalise/finalized-tests`);
       if (!res.ok) {
         const txt = await res.text().catch(() => 'Failed');
         throw new Error(txt || 'Failed loading finalized tests');
@@ -184,9 +184,8 @@ function Results() {
       setAttemptsLoading(true);
       setAttemptsError(null);
       try {
-        const base = window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com';
         const qsid = encodeURIComponent(job.raw.question_set_id);
-        const res = await fetch(`${base}/api/v1/test/attempts/${qsid}`);
+        const res = await fetch(`${pythonUrl}/v1/test/attempts/${qsid}`);
         if (!res.ok) {
           const txt = await res.text().catch(() => 'Failed');
           console.error('Failed to load attempts', txt);
@@ -300,9 +299,8 @@ function Results() {
     const ok = window.confirm(`Delete test "${job.jobTitle}"? This cannot be undone.`);
     if (!ok) return;
     try {
-      const base = window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com';
       const qsid = encodeURIComponent(job.raw.question_set_id);
-      const res = await fetch(`${base}/api/v1/finalise/finalized-test/${qsid}`, { method: 'DELETE' });
+      const res = await fetch(`${pythonUrl}/v1/finalise/finalized-test/${qsid}`, { method: 'DELETE' });
       if (!res.ok) {
         const txt = await res.text();
         alert('Delete failed: ' + txt);
