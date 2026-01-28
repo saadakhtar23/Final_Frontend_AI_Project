@@ -1,6 +1,6 @@
 // export const baseUrl = "https://final-adminbackend-ai-project.onrender.com"
-// export const baseUrl = "http://localhost:4000/api"
-export const baseUrl = "http://103.192.198.240/api"
+export const baseUrl = "http://localhost:4000/api"
+// export const baseUrl = "http://103.192.198.240/api"
 // export const baseUrl = "http://103.192.198.240/:6000"
 // export const superAdminBaseUrl = "https://multi-tenant-website-backend.onrender.com/ai"
 export const superAdminBaseUrl = "http://103.192.198.240/api"   

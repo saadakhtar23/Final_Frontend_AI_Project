@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import img from "../assets/CandidateLogin.png";
+import img from "../img/Logo.png";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { baseUrl } from "../utils/ApiConstants";

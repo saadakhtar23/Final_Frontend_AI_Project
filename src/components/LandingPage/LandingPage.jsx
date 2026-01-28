@@ -323,7 +323,7 @@ const LandingPage = () => {
                 Hire Smarter, Faster, and Without the Hassle
               </h1>
               <p className='my-10 text-xl'>
-                Our AI recruiter finds, screens, and engages top talent 24/7—so you can focus on growing your business, not chasing resumes
+                Our RecruterAI finds, screens, and engages top talent 24/7—so you can focus on growing your business, not chasing resumes
               </p>
               {/* <div className="flex flex-col sm:flex-row justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
                 <button className="border border-[#6D28D9] bg-[#6D28D9] transition duration-300 text-white px-8 py-3 rounded-3xl font-semibold shadow-xl hover:scale-105 transform">
@@ -596,7 +596,7 @@ const LandingPage = () => {
                     </h3>
                     <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
                       Experience the difference for yourself. Schedule a live demo
-                      with our team and watch AI Recruit transform your hiring
+                      with our team and watch RecruterAI transform your hiring
                       process.
                     </p>
                   </div>
