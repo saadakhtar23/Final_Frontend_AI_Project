@@ -116,7 +116,7 @@ const UniversalLogin = () => {
                 <div className="flex flex-col md:flex-row items-center justify-between">
                     <div className="flex-1 text-center md:text-left mb-10 md:mb-0">
                         <p className="text-2xl text-[#0496FF] text-center font-medium mb-8">
-                            Login to Your AIRecruiter
+                            Login to Your Recruter AI
                         </p>
                         <img
                             src={img}

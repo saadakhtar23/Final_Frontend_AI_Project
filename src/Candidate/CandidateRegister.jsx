@@ -158,7 +158,7 @@ const CandidateRegister = () => {
             <div className="flex flex-col md:flex-row items-center justify-between max-w-6xl w-full mx-auto px-4">
                 <div className="flex-1 text-center md:text-left mb-10 md:mb-0">
                     <p className="text-2xl text-[#0496FF] text-center font-medium mb-8">
-                        Join AIRecruiter Today
+                        Join Recruter AI Today
                     </p>
                     <img src={img} alt="Illustration" className="h-[400px] w-full md:w-auto mx-auto" />
                 </div>

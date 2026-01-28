@@ -14,7 +14,7 @@ const SuperAdminRegister = () => {
             <div className="flex gap-20">
                 <div className="w-[500px] hidden md:flex flex-col items-center justify-center">
                     <h2 className="text-2xl font-semibold mb-10 text-purple-800 text-center">
-                        Login to your AIRecruiter
+                        Login to your Recruter AI
                     </h2>
                     <img className="h-full w-full" src={img} alt="" />
                 </div>
