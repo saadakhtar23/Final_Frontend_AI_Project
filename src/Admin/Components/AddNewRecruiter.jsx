@@ -107,7 +107,7 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
                     });
                 }
             } else {
-                const response = await axios.post(`${baseUrl}/api/admin/hr`, {
+                const response = await axios.post(`${baseUrl}/admin/hr`, {
                     name: formData.fullName,
                     phone: formData.phone,
                     email: formData.email,

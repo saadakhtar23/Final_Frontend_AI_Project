@@ -55,7 +55,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
         `}
       >
         <div className="flex items-center justify-between py-6 px-7 border-b border-gray-700">
-          <h1 className="text-xl font-bold">AIRecruit</h1>
+          <h1 className="text-xl font-bold">Recruter AI</h1>
           <button
             onClick={onToggle}
             className="p-1 rounded hover:bg-gray-700 lg:hidden"
@@ -85,7 +85,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
                   ${activeNav === 'RecruiterManagement' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
               >
                 <UserPlus size={20} />
-                <span>Recruiter Management</span>
+                <span>Recruiter Administration</span>
               </button>
             </li>
 

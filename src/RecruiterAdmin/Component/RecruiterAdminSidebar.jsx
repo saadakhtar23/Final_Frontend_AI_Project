@@ -52,7 +52,7 @@ const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
         `}
       >
         <div className="flex items-center justify-between py-6 px-7 border-b border-gray-700">
-          <h1 className="text-xl font-bold">AIRecruit</h1>
+          <h1 className="text-xl font-bold">Recruter AI</h1>
           <button
             onClick={onToggle}
             className="p-1 rounded hover:bg-gray-700 lg:hidden"
@@ -82,7 +82,7 @@ const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
                   ${activeNav === 'JobDescription' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
               >
                 <UserPlus size={20} />
-                <span>All JDs</span>
+                <span>Job Requisitions</span>
               </button>
             </li> 
 
@@ -93,7 +93,7 @@ const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
                   ${activeNav === 'Assessment' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
               >
                 <Building2 size={20} />
-                <span>Assessment</span>
+                <span>Candidate Assessment</span>
               </button>
             </li>
 
@@ -104,7 +104,7 @@ const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
                   ${activeNav === 'Results' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
               >
                 <Building2 size={20} />
-                <span>Results</span>
+                <span>Candidate Evaluation</span>
               </button>
             </li>
 

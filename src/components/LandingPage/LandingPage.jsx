@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { superAdminBaseUrl } from '../../utils/ApiConstants';
+import Logo from '../../img/Logo.png';
 import {
   BrainCircuit,
   Search,
@@ -234,9 +235,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-2">
-              <span className="text-2xl font-bold text-[#6D28D9]">
-                AiRecruit
-              </span>
+              <img src={Logo} alt="Recruter AI Logo" className="h-12 w-auto" />
             </div>
 
             <nav className="hidden md:flex items-center space-x-8">
@@ -324,7 +323,7 @@ const LandingPage = () => {
                 Hire Smarter, Faster, and Without the Hassle
               </h1>
               <p className='my-10 text-xl'>
-                Our AI recruiter finds, screens, and engages top talent 24/7—so you can focus on growing your business, not chasing resumes
+                Our RecruterAI finds, screens, and engages top talent 24/7—so you can focus on growing your business, not chasing resumes
               </p>
               {/* <div className="flex flex-col sm:flex-row justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
                 <button className="border border-[#6D28D9] bg-[#6D28D9] transition duration-300 text-white px-8 py-3 rounded-3xl font-semibold shadow-xl hover:scale-105 transform">
@@ -597,7 +596,7 @@ const LandingPage = () => {
                     </h3>
                     <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
                       Experience the difference for yourself. Schedule a live demo
-                      with our team and watch AI Recruit transform your hiring
+                      with our team and watch RecruterAI transform your hiring
                       process.
                     </p>
                   </div>
@@ -694,7 +693,7 @@ const LandingPage = () => {
             {/* Company Info */}
             <div>
               <div className="flex items-center space-x-2 mb-6">
-                <span className="text-3xl font-bold">AiRecruit</span>
+                <span className="text-3xl font-bold">Recruter AI</span>
               </div>
               <p className="mb-6 leading-relaxed">
                 Smarter hiring with AI-powered interviews
@@ -755,7 +754,7 @@ const LandingPage = () => {
           {/* Bottom Bar */}
           <div className="border-t border-purple-700 mt-12 pt-6 text-center">
             <p className="">
-              © 2026 RecruitAI. All rights reserved
+              © 2026 Recruter AI. All rights reserved
             </p>
           </div>
         </div>

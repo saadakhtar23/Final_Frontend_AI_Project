@@ -177,6 +177,7 @@ function Report() {
             try {
               const qset = m.raw?.question_set_id || m.raw?.questionSetId || m.raw?.question_setId || null;
               if (qset) {
+<<<<<<< HEAD
                 // prefer finalized tests (they contain a human-friendly `title`/`job_id`)
                 if (Array.isArray(finalizedTests) && finalizedTests.length) {
                   try {
@@ -204,6 +205,15 @@ function Report() {
                     if (ft) {
                       m.jobTitle = ft.title || ft.role_title || m.jobTitle;
                       m.company = ft.company || m.company;
+=======
+                try {
+                  const ar = await fetch(`${pythonUrl}/v1/question-set/${encodeURIComponent(qset)}/questions`);
+                  if (ar.ok) {
+                    const aj = await ar.json();
+                    if (aj && aj.status === 'success') {
+                      m.jobTitle = aj.role_title || aj.title || m.jobTitle;
+                      m.company = aj.company || m.company;
+>>>>>>> caf93820475124cc567b1db5665f4af6092c44c6
                     }
                   } catch (e) { /* ignore finalized lookup errors */ }
                 }

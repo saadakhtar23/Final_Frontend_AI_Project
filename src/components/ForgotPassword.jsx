@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-import img from "../assets/RecruiterLogin.png";
+import img from "../img/Logo.png";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { baseUrl } from "../utils/ApiConstants";

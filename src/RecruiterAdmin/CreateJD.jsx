@@ -94,7 +94,7 @@ function CreateJD() {
             if (response.data.success) {
                 setGeneratedJD(response.data.jd);
                 //const generatedUrl = `${window.location.origin}/Candidate-Dashboard/Alldjs/${response.data.jd._id}`;
-                const generatedUrl = `https://final-frontend-ai-project.vercel.app/Candidatelogin`;
+                const generatedUrl = `http://103.192.198.240/CandidateLogin`;
                 setJdUrl(generatedUrl);
                 setShowSuccessPopup(true);
             }
