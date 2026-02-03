@@ -32,7 +32,7 @@ class AssessmentAPI {
    */
   static async getAllFinalizedTests() {
     try {
-      const response = await fetch(`${API_BASE_URL}/finalise/finalized-test`);
+      const response = await fetch(`${API_BASE_URL}/finalise/finalized-tests`);
       if (!response.ok) {
         let errorText = await response.text();
         console.error(`Finalized tests API returned status ${response.status}:`, errorText);
@@ -45,7 +45,7 @@ class AssessmentAPI {
       return null;
     }
   }
-  
+
   /**
    * Get list of tests taken by a candidate (job_id / question_set_id)
    * @param {string} candidateId
