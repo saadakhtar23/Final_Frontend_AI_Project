@@ -69,6 +69,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { CompanyProvider } from './Context/companyContext';
 import CandidateRegister from './Candidate/CandidateRegister';
 import CandidateForgotPassword from './components/CandidateForgotPassword';
+import RecruiterProfile from './RecruiterAdmin/RecruiterProfile';
 
 const App = () => {
   return (
@@ -157,6 +158,7 @@ const App = () => {
               {/* ✅ NEW ROUTE: Standalone Review page (optional) */}
               <Route path="Review" element={<Review />} />
               <Route path="NonCandidateList" element={<NonCandidateList />} />
+              <Route path="RecruiterProfile" element={<RecruiterProfile />} />
             </Route>
           </Route>
 

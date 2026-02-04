@@ -1,43 +1,168 @@
 import React, { useEffect, useState } from "react";
-import {
-    FileText,
-    Filter,
-    Users,
-    Download,
-    Eye,
-    Trash2,
-    Code, PenTool, Megaphone, Palette, Layers
-} from "lucide-react";
-import Pagination from "../components/LandingPage/Pagination";
+import img from "../img/cd.png";
+import TF from "../img/TF.png";
+import IF from "../img/IF.png";
+import TU from "../img/TU.png";
+import TA from "../img/TA.png";
+import TAL from "../img/TAL.png";
+import TFL from "../img/TFL.png";
+import ISL from "../img/ISL.png";
+import RDbanner from "../img/RD-banner.png";
+
 import axios from "axios";
 import { baseUrl } from "../utils/ApiConstants";
+import IntelligentHiringHero from "./Component/IntelligentHiringAgent";
 
-export default function RecruiterDashboard() {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [offersPage, setOffersPage] = useState(1);
-    const offersPerPage = 5;
-    const itemsPerPage = 5;
+const RecruiterDashboard = () => {
+    const [recentCandidates, setRecentCandidates] = useState([]);
+    const [pieChartView, setPieChartView] = useState('total');
+    const [user, setUser] = useState(null);
+    const [assignedJDs, setAssignedJDs] = useState([]);
+    const [createdJDs, setCreatedJDs] = useState([]);
+    const [candidates, setCandidates] = useState([]);
+    const [recentAssignedJDs, setRecentAssignedJDs] = useState([]);
+    const [monthlyData, setMonthlyData] = useState([]);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [availableYears, setAvailableYears] = useState([]);
+    const [hoveredBar, setHoveredBar] = useState(null);
+    const [totalFiltered, setTotalFiltered] = useState(0);
+    const [totalUnfiltered, setTotalUnfiltered] = useState(0);
+    const [totalApplications, setTotalApplications] = useState(0);
 
-    const [totalCandidates, setTotalCandidates] = useState(0);
-    const [totalJd, setTotalJd] = useState(0);
-    const [jdByRecruiter, setJdByRecruiter] = useState(0);
-    const [allJdData, setAllJdData] = useState([]);
-    const [recentJobs, setRecentJobs] = useState([]);
+    const stats = [
+        {
+            title: "Total Applicants",
+            value: totalApplications,
+            img: TA,
+            text: "text-pink-600",
+            line: TAL,
+        },
+        {
+            title: "Total Filtered",
+            value: totalFiltered,
+            img: TF,
+            text: "text-purple-600",
+            line: TFL,
+        },
+        {
+            title: "Total JD Created",
+            value: createdJDs.length || 0,
+            img: IF,
+            text: "text-indigo-600",
+            line: ISL,
+        },
+        {
+            title: "Total Unfiltered",
+            value: totalUnfiltered,
+            img: TU,
+            text: "text-pink-600",
+            line: TAL,
+        },
+    ];
+
+    const getAvailableYears = (assigned, created) => {
+        const years = new Set();
+        assigned.forEach(jd => {
+            if (jd.createdAt) {
+                years.add(new Date(jd.createdAt).getFullYear());
+            }
+        });
+        created.forEach(jd => {
+            if (jd.createdAt) {
+                years.add(new Date(jd.createdAt).getFullYear());
+            }
+        });
+        return Array.from(years).sort((a, b) => b - a);
+    };
+
+    const processMonthlyData = (assigned, created, year) => {
+        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        const monthlyStats = months.map((month, index) => {
+            const assignedCount = assigned.filter(jd => {
+                if (!jd.createdAt) return false;
+                const date = new Date(jd.createdAt);
+                return date.getMonth() === index && date.getFullYear() === year;
+            }).length;
+            const createdCount = created.filter(jd => {
+                if (!jd.createdAt) return false;
+                const date = new Date(jd.createdAt);
+                return date.getMonth() === index && date.getFullYear() === year;
+            }).length;
+            return {
+                month,
+                monthIndex: index,
+                assigned: assignedCount,
+                created: createdCount,
+                year
+            };
+        });
+        return monthlyStats;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    };
+
+    const getRecentAssignedJDs = (jds) => {
+        return [...jds]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 4);
+    };
+
+    const getPieChartData = () => {
+        if (pieChartView === 'monthly') {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            const monthlyAssigned = assignedJDs.filter(jd => {
+                if (!jd.createdAt) return false;
+                const date = new Date(jd.createdAt);
+                return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            }).length;
+
+            const monthlyCreated = createdJDs.filter(jd => {
+                if (!jd.createdAt) return false;
+                const date = new Date(jd.createdAt);
+                return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            }).length;
+
+            const total = monthlyAssigned + monthlyCreated;
+            if (total === 0) return { assignedPercent: 50, createdPercent: 50, total: 0 };
+            const assignedPercent = Math.round((monthlyAssigned / total) * 100);
+            const createdPercent = 100 - assignedPercent;
+            return { assignedPercent, createdPercent, total };
+        } else {
+            const totalAssigned = assignedJDs.length;
+            const totalCreated = createdJDs.length;
+            const total = totalAssigned + totalCreated;
+            if (total === 0) return { assignedPercent: 50, createdPercent: 50, total: 0 };
+            const assignedPercent = Math.round((totalAssigned / total) * 100);
+            const createdPercent = 100 - assignedPercent;
+            return { assignedPercent, createdPercent, total };
+        }
+    };
+
+    const getYearTotals = () => {
+        const assignedTotal = monthlyData.reduce((sum, m) => sum + m.assigned, 0);
+        const createdTotal = monthlyData.reduce((sum, m) => sum + m.created, 0);
+        return { assignedTotal, createdTotal };
+    };
 
     useEffect(() => {
         const fetchAllData = async () => {
             try {
                 const token = localStorage.getItem("token");
-
                 const [
                     candidatesRes,
-                    allJdRes,
+                    assignedOffersRes,
                     jdByRecruiterRes
                 ] = await Promise.all([
                     axios.get(`${baseUrl}/jd/all-candidates`, {
                         headers: { Authorization: `Bearer ${token}` }
                     }),
-                    axios.get(`${baseUrl}/jd/all-jd-hr`, {
+                    axios.get(`${baseUrl}/jd/assigned-offers/hr`, {
                         headers: { Authorization: `Bearer ${token}` }
                     }),
                     axios.get(`${baseUrl}/jd/created-by/hr`, {
@@ -45,512 +170,501 @@ export default function RecruiterDashboard() {
                     }),
                 ]);
 
-                console.log("candidatesRes:", candidatesRes.data);
-                console.log("allJdRes:", allJdRes.data);
-                console.log("jdByRecruiterRes:", jdByRecruiterRes.data);
-
+                const assignedData = assignedOffersRes.data.success ? assignedOffersRes.data.data || [] : [];
+                const createdData = jdByRecruiterRes.data.success ? jdByRecruiterRes.data.data || [] : [];
                 if (candidatesRes.data.success) {
-                    setTotalCandidates(candidatesRes.data.count || candidatesRes.data.data?.length || 0);
+                    setCandidates(candidatesRes.data.data || []);
                 }
-
-                if (allJdRes.data.success) {
-                    setTotalJd(allJdRes.data.count || allJdRes.data.data?.length || 0);
-                    setAllJdData(allJdRes.data.data || []);
-                    
-                    const sortedJobs = [...(allJdRes.data.data || [])].sort(
-                        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-                    );
-                    setRecentJobs(sortedJobs.slice(0, 4));
-                }
-
-                if (jdByRecruiterRes.data.success) {
-                    setJdByRecruiter(jdByRecruiterRes.data.count || jdByRecruiterRes.data.data?.length || 0);
-                }
-
+                setAssignedJDs(assignedData);
+                setRecentAssignedJDs(getRecentAssignedJDs(assignedData));
+                setCreatedJDs(createdData);
+                const years = getAvailableYears(assignedData, createdData);
+                setAvailableYears(years);
+                const currentYear = new Date().getFullYear();
+                const yearToSelect = years.includes(currentYear) ? currentYear : (years[0] || currentYear);
+                setSelectedYear(yearToSelect);
+                const monthly = processMonthlyData(assignedData, createdData, yearToSelect);
+                setMonthlyData(monthly);
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
             }
         };
-
         fetchAllData();
     }, []);
 
-    const recruiterJdPercentage = totalJd > 0 ? Math.round((jdByRecruiter / totalJd) * 100) : 0;
-    const otherJdPercentage = 100 - recruiterJdPercentage;
+    useEffect(() => {
+        if (assignedJDs.length > 0 || createdJDs.length > 0) {
+            const monthly = processMonthlyData(assignedJDs, createdJDs, selectedYear);
+            setMonthlyData(monthly);
+        }
+    }, [selectedYear, assignedJDs, createdJDs]);
 
-    const offersStartIndex = (offersPage - 1) * offersPerPage;
-    const offersEndIndex = offersStartIndex + offersPerPage;
-    const paginatedOffers = allJdData.slice(offersStartIndex, offersEndIndex);
-    const totalOffersPages = Math.ceil(allJdData.length / offersPerPage);
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const res = await axios.get(`${baseUrl}/auth/meAll`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                setUser(res.data.data);
+            } catch (err) {
+                console.error("Error fetching user:", err);
+            }
+        };
+        fetchUser();
+    }, []);
 
-    const handleOffersPageChange = (page) => {
-        setOffersPage(page);
+    useEffect(() => {
+        const fetchRecentCandidates = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const res = await axios.get(`${baseUrl}/offer/latest-candidates`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (res.data.success) {
+                    const allCandidates = res.data.data || [];
+
+                    const recent5 = allCandidates.slice(-5);
+                    setRecentCandidates(recent5);
+
+                    setTotalApplications(allCandidates.length);
+                    setTotalFiltered(allCandidates.filter(c => c.status === 'filtered').length);
+                    setTotalUnfiltered(allCandidates.filter(c => c.status === 'unfiltered').length);
+                }
+            } catch (err) {
+                console.error("Error fetching recent candidates:", err);
+            }
+        };
+        fetchRecentCandidates();
+    }, []);
+
+    const pieData = getPieChartData();
+    const yearTotals = getYearTotals();
+
+    const pieSize = 200;
+    const pieCenter = pieSize / 2;
+    const outerRadius = 80;
+    const innerRadius = 62;
+    const strokeOuter = 10;
+    const strokeInner = 10;
+    const outerCircumference = 2 * Math.PI * outerRadius;
+    const innerCircumference = 2 * Math.PI * innerRadius;
+
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+
+    const todayJDs = assignedJDs.filter(jd => {
+        if (!jd.dueDate) return false;
+        const d = new Date(jd.dueDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === todayDate.getTime();
+    });
+
+    const upcomingJDs = assignedJDs
+        .filter(jd => {
+            if (!jd.dueDate) return false;
+            const d = new Date(jd.dueDate);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() > todayDate.getTime();
+        })
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+        .slice(0, 3);
+
+    const renderJDItem = (jd, index, isToday = false) => {
+        const colorClasses = ['bg-purple-500', 'bg-blue-500', 'bg-pink-500'];
+        const colorClass = isToday ? 'bg-purple-600' : colorClasses[index % colorClasses.length];
+
+        return (
+            <div key={jd._id} className="flex gap-4 py-3 mb-2">
+                <div className={`w-1 md:w-1.5 rounded-full ${colorClass} h-12 flex-shrink-0`}></div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between flex-1 gap-2 md:gap-4">
+                    <h4 className="font-medium text-gray-800 text-sm md:text-base w-full md:w-[40%] truncate" title={jd.jobTitle}>
+                        {jd.jobTitle}
+                    </h4>
+                    <div className="flex flex-col">
+                        <span className="text-gray-400 text-xs">Experience</span>
+                        <span className="text-sm text-gray-600">{jd.experience || 'N/A'}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-gray-400 text-xs">Timeline</span>
+                        <span className="text-sm text-gray-600 whitespace-nowrap">
+                            {formatDate(jd.createdAt)} - {formatDate(jd.dueDate)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
-        <div className="">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="col-span-2 bg-white p-6 rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                            Dashboard Overview
-                        </h2>
-                        {/* <button className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-100">
-                            <Download size={16} />
-                            Export
-                        </button> */}
-                    </div>
+        <div className="min-h-screen">
+            <div className="relative w-full mb-6 overflow-hidden rounded-xl shadow-sm">
+                <img
+                    src={RDbanner}
+                    alt="Dashboard Banner"
+                    className="w-full h-32 sm:h-40 md:h-48 lg:h-56 xl:h-auto object-cover"
+                />
+                <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-6 md:px-8 lg:px-12 text-white">
+                    <p className="text-xs sm:text-sm md:text-base opacity-90 mb-0.5 sm:mb-1">
+                        {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-1 sm:mb-2">
+                        {(() => {
+                            const hour = new Date().getHours();
+                            if (hour < 12) return "Good Morning";
+                            if (hour < 18) return "Good Afternoon";
+                            return "Good Evening";
+                        })()}, {user?.name ? user.name.split(' ')[0] : 'Recruiter'}!
+                    </h1>
+                    <p className="text-xs sm:text-sm md:text-base opacity-90 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg leading-relaxed hidden sm:block">
+                        Turn hiring chaos into high-fives with <br className="hidden md:block" />
+                        smarter, faster recruiting
+                    </p>
+                </div>
+            </div>
 
-                    <div className="grid sm:grid-cols-3 gap-5">
-                        <div className="bg-blue-100 p-5 rounded-xl">
-                            <div className="bg-blue-500/20 p-3 rounded-lg w-[50px]">
-                                <FileText className="text-blue-600" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="flex flex-col gap-5">
+                    {stats.slice(0, 2).map((item, i) => (
+                        <div
+                            key={i}
+                            className="bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between flex-1"
+                        >
+                            <div className="flex justify-between items-center">
+                                <p className="text-gray-500 text-2xl w-30">{item.title}</p>
+                                <img src={item.img} alt="" />
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-900">{totalJd}</p>
-                                    <p className="text-gray-600 text-sm">Total JD</p>
-                                    <p className="text-blue-500 text-xs mt-1">
-                                        All job descriptions
-                                    </p>
-                                </div>
+                            <div className="flex justify-between items-center mt-2">
+                                <h2 className={`text-4xl font-bold ${item.text}`}>
+                                    {item.value}
+                                </h2>
+                                <img src={item.line} alt="" className="h-10 object-contain" />
                             </div>
                         </div>
-
-                        <div className="bg-pink-100 p-5 rounded-xl">
-                            <div className="bg-pink-500/20 py-3 rounded-lg w-[50px]">
-                                <Filter className="mx-auto text-pink-600" />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-900">{jdByRecruiter}</p>
-                                    <p className="text-gray-600 text-sm">JD by Recruiter</p>
-                                    <p className="text-pink-500 text-xs mt-1">
-                                        Created by you
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-lime-100 p-5 rounded-xl">
-                            <div className="bg-lime-500/20 p-3 rounded-lg w-[50px]">
-                                <Users className="text-lime-600" />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-900">{totalCandidates}</p>
-                                    <p className="text-gray-600 text-sm">Total Candidates</p>
-                                    <p className="text-lime-600 text-xs mt-1">
-                                        All candidates
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col items-center justify-center">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">JD Distribution</h3>
-                    <div className="relative w-52 h-52">
-                        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                <div className="flex flex-col gap-5">
+                    {stats.slice(2, 4).map((item, i) => (
+                        <div
+                            key={i}
+                            className="bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between flex-1"
+                        >
+                            <div className="flex justify-between items-center">
+                                <p className="text-gray-500 text-2xl w-30">{item.title}</p>
+                                <img src={item.img} alt="" />
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                                <h2 className={`text-4xl font-bold ${item.text}`}>
+                                    {item.value}
+                                </h2>
+                                <img src={item.line} alt="" className="h-10 object-contain" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div
+                    style={{
+                        width: "100%",
+                        background: "#fff",
+                        borderRadius: 18,
+                        padding: 20,
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
+                        fontFamily: "Inter, sans-serif",
+                    }}
+                >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <h3 style={{ fontSize: 18, fontWeight: 600 }}>JD Distribution</h3>
+                        <select
+                            value={pieChartView}
+                            onChange={(e) => setPieChartView(e.target.value)}
+                            style={{
+                                border: "1px solid #e5e7eb",
+                                borderRadius: 10,
+                                padding: "6px 14px",
+                                fontSize: 13,
+                                backgroundColor: "#fff",
+                                cursor: "pointer",
+                                outline: "none"
+                            }}
+                        >
+                            <option value="total">Total</option>
+                            <option value="monthly">This Month</option>
+                        </select>
+                    </div>
+
+                    <div style={{ position: "relative", display: "flex", justifyContent: "center", margin: "30px 0" }}>
+                        <svg width={pieSize} height={pieSize}>
+                            <circle cx={pieCenter} cy={pieCenter} r={outerRadius} stroke="#fde6ea" strokeWidth={strokeOuter} fill="none" />
                             <circle
-                                cx="18"
-                                cy="18"
-                                r="15.9155"
+                                cx={pieCenter}
+                                cy={pieCenter}
+                                r={outerRadius}
+                                stroke="#F7789B"
+                                strokeWidth={strokeOuter}
                                 fill="none"
-                                stroke="#e5e7eb"
-                                strokeWidth="3.5"
+                                strokeLinecap="round"
+                                strokeDasharray={outerCircumference}
+                                strokeDashoffset={outerCircumference - (pieData.createdPercent / 100) * outerCircumference}
+                                transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
                             />
+                            <circle cx={pieCenter} cy={pieCenter} r={innerRadius} stroke="#e9ecff" strokeWidth={strokeInner} fill="none" />
                             <circle
-                                cx="18"
-                                cy="18"
-                                r="15.9155"
+                                cx={pieCenter}
+                                cy={pieCenter}
+                                r={innerRadius}
+                                stroke="#5B6CFF"
+                                strokeWidth={strokeInner}
                                 fill="none"
-                                stroke="#ec4899"
-                                strokeWidth="3.5"
-                                strokeDasharray={`${recruiterJdPercentage} ${100 - recruiterJdPercentage}`}
-                                strokeDashoffset="0"
-                            />
-                            <circle
-                                cx="18"
-                                cy="18"
-                                r="15.9155"
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="3.5"
-                                strokeDasharray={`${otherJdPercentage} ${100 - otherJdPercentage}`}
-                                strokeDashoffset={`-${recruiterJdPercentage}`}
+                                strokeLinecap="round"
+                                strokeDasharray={innerCircumference}
+                                strokeDashoffset={innerCircumference - (pieData.assignedPercent / 100) * innerCircumference}
+                                transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
                             />
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <p className="text-gray-500 text-sm">Total JD</p>
-                            <p className="text-3xl font-bold text-gray-900">{totalJd}</p>
+                        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+                            <div style={{ fontSize: 14, color: "#6b7280" }}>
+                                {pieChartView === 'monthly' ? 'This Month' : 'Total JD'}
+                            </div>
+                            <div style={{ fontSize: 28, fontWeight: 700 }}>{pieData.total}</div>
                         </div>
                     </div>
-                    <div className="flex gap-4 mt-4 text-xs">
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
-                            <span>By Recruiter ({recruiterJdPercentage}%)</span>
+
+                    <div style={{ display: "flex", justifyContent: "center", gap: 30, fontSize: 14 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className="w-8 h-3 rounded-full bg-indigo-400"></span>
+
+                            Others <b>{pieData.assignedPercent}%</b>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span>Others ({otherJdPercentage}%)</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className="w-8 h-3 rounded-full bg-rose-400"></span>
+                            {user?.name || 'User'} <b>{pieData.createdPercent}%</b>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        JD Analytics
-                    </h2>
-                    <div className="h-48 flex items-end justify-center gap-12 bg-gradient-to-t from-gray-50 to-white rounded-lg p-4">
-                        {/* Total JD Bar */}
-                        <div className="flex flex-col items-center">
-                            <div 
-                                className="w-16 bg-blue-500 rounded-t-lg transition-all duration-500"
-                                style={{ height: `${Math.min((totalJd / Math.max(totalJd, 1)) * 150, 150)}px` }}
-                            ></div>
-                            <p className="mt-2 text-sm font-medium text-gray-700">Total JD</p>
-                            <p className="text-lg font-bold text-blue-600">{totalJd}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mt-6">
+                <div className="lg:col-span-3 bg-white rounded-xl p-6 shadow-sm h-[320px]">
+                    <div className="flex flex-wrap justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-semibold">All Job Descriptions</h3>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                className="border rounded-md text-sm px-3 py-1.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                {availableYears.length > 0 ? (
+                                    availableYears.map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))
+                                ) : (
+                                    <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                                )}
+                            </select>
                         </div>
-                        
-                        <div className="flex flex-col items-center">
-                            <div 
-                                className="w-16 bg-pink-500 rounded-t-lg transition-all duration-500"
-                                style={{ height: `${totalJd > 0 ? Math.min((jdByRecruiter / totalJd) * 150, 150) : 0}px` }}
-                            ></div>
-                            <p className="mt-2 text-sm font-medium text-gray-700">By Recruiter</p>
-                            <p className="text-lg font-bold text-pink-600">{jdByRecruiter}</p>
+                        <div className="flex gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-2 rounded-full bg-indigo-400"></span>
+                                Assigned JD ({yearTotals.assignedTotal})
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-2 rounded-full bg-rose-400"></span>
+                                Created JD ({yearTotals.createdTotal})
+                            </div>
                         </div>
+                    </div>
 
-                        <div className="flex flex-col items-center">
-                            <div 
-                                className="w-16 bg-lime-500 rounded-t-lg transition-all duration-500"
-                                style={{ height: `${totalJd > 0 ? Math.min((totalCandidates / Math.max(totalJd, totalCandidates)) * 150, 150) : 0}px` }}
-                            ></div>
-                            <p className="mt-2 text-sm font-medium text-gray-700">Candidates</p>
-                            <p className="text-lg font-bold text-lime-600">{totalCandidates}</p>
+                    <div className="overflow-x-auto">
+                        <div className="flex min-w-[650px]">
+                            <div className="flex flex-col justify-between h-48 pr-3 text-right">
+                                {[400, 300, 200, 100, 0].map((value, index) => (
+                                    <span key={index} className="text-xs text-gray-400">
+                                        {value}
+                                    </span>
+                                ))}
+                            </div>
+
+                            <div className="flex-1 relative">
+                                <div className="absolute inset-0 flex flex-col justify-between">
+                                    {[0, 1, 2, 3, 4].map((_, index) => (
+                                        <div key={index} className="border-t border-gray-100 w-full"></div>
+                                    ))}
+                                </div>
+
+                                <div className="flex items-end justify-between h-48 gap-3 relative z-10">
+                                    {(monthlyData.length > 0 ? monthlyData :
+                                        ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].map(month => ({ month, assigned: 0, created: 0 }))
+                                    ).map((item, i) => {
+                                        const assignedHeight = (item.assigned / 400) * 100;
+                                        const createdHeight = (item.created / 400) * 100;
+                                        const isHovered = hoveredBar === i;
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="flex flex-col items-center gap-2 flex-1 h-full relative cursor-pointer"
+                                                onMouseEnter={() => setHoveredBar(i)}
+                                                onMouseLeave={() => setHoveredBar(null)}
+                                            >
+                                                {isHovered && (
+                                                    <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-20">
+                                                        <div className="font-semibold mb-1">{item.month} {selectedYear}</div>
+                                                        <div>Assigned: {item.assigned}</div>
+                                                        <div>Created: {item.created}</div>
+                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                                    </div>
+                                                )}
+
+                                                <div
+                                                    className="flex items-end gap-1 flex-1 w-full justify-center"
+                                                    title={`${item.month} ${selectedYear}\nAssigned: ${item.assigned}\nCreated: ${item.created}`}
+                                                >
+                                                    <div
+                                                        style={{ height: `${Math.max(assignedHeight, 2)}%` }}
+                                                        className={`w-4 bg-indigo-400 rounded-full transition-all ${isHovered ? 'bg-indigo-500' : ''}`}
+                                                    ></div>
+                                                    <div
+                                                        style={{ height: `${Math.max(createdHeight, 2)}%` }}
+                                                        className={`w-4 bg-rose-400 rounded-full transition-all ${isHovered ? 'bg-rose-500' : ''}`}
+                                                    ></div>
+                                                </div>
+
+                                                <span className={`text-xs ${isHovered ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                                                    {item.month}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 sm:p-6 flex flex-col overflow-hidden min-h-[250px] sm:min-h-[280px]">
-    <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-800">Statistics</h2>
-        <div className="text-xs sm:text-sm text-gray-600">
-            <p className="leading-relaxed">
-                <span className="font-medium">Summary</span>
-                <br />
-                <span className="text-blue-500 font-medium">{totalJd}</span> Total JD
-                <br />
-                <span className="text-pink-500 font-medium">{jdByRecruiter}</span> By Recruiter
-                <br />
-                <span className="text-lime-500 font-medium">{totalCandidates}</span> Candidates
-            </p>
-        </div>
-    </div>
-    <div className="flex-1 mt-4 sm:mt-6 relative min-h-[80px] sm:min-h-[100px]">
-        <svg
-            viewBox="0 0 100 40"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full"
-        >
-            <path
-                d="M0,30 C10,25 30,35 50,20 70,25 90,15 100,30"
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2"
-            />
-            <path
-                d="M0,35 C20,30 40,25 60,35 80,30 100,25 100,35"
-                fill="none"
-                stroke="#ec4899"
-                strokeWidth="2"
-            />
-        </svg>
-    </div>
-    <div className="mt-3 sm:mt-4">
-        <div className="flex justify-between text-xs sm:text-sm gap-2">
-            <p className="text-gray-500 truncate">Recruiter Contribution</p>
-            <p className="text-gray-700 font-medium flex-shrink-0">{recruiterJdPercentage}%</p>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div 
-                className="bg-pink-500 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(recruiterJdPercentage, 100)}%` }}
-            ></div>
-        </div>
-    </div>
-</div>
-            </div>
-
-            <div className="mt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                    <div className="bg-white p-6 rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] lg:col-span-2 flex justify-center items-center">
-                        <div className="flex flex-col md:flex-row items-start gap-8 max-w-5xl w-full">
-                            <div className="space-y-4 w-full md:w-auto">
-                                <h2 className="text-lg font-semibold mb-4">Category</h2>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-blue-100 p-3 rounded-lg">
-                                        <Code size={20} className="text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium">Developer</h3>
-                                        <p className="text-gray-500 text-sm">11 Community</p>
-                                    </div>
+                <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm h-[320px] flex flex-col">
+                    <h3 className="text-lg font-semibold mb-4">Calendar</h3>
+                    <div className="overflow-y-auto overflow-x-auto pb-2 flex-1">
+                        <div className="min-w-[400px]">
+                            {todayJDs.length > 0 && (
+                                <div className="mb-4">
+                                    <h4 className="text-gray-400 text-sm mb-3">Today</h4>
+                                    {todayJDs.map((jd, index) => renderJDItem(jd, index, true))}
                                 </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-green-100 p-3 rounded-lg">
-                                        <PenTool size={20} className="text-green-600" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium">Designer</h3>
-                                        <p className="text-gray-500 text-sm">24 Community</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-orange-100 p-3 rounded-lg">
-                                        <Megaphone size={20} className="text-orange-600" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium">Marketing</h3>
-                                        <p className="text-gray-500 text-sm">18 Community</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 space-y-3 w-full">
-                                <h3 className="text-sm mb-2">All Criteria</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {[
-                                        {
-                                            title: "UI/UX Designer",
-                                            desc: "There are more than 100 participants",
-                                            icon: <Palette size={18} className="text-purple-600" />,
-                                            bg: "bg-purple-100",
-                                        },
-                                        {
-                                            title: "Visual Designer",
-                                            desc: "All categories of food for you",
-                                            icon: <PenTool size={18} className="text-green-600" />,
-                                            bg: "bg-green-100",
-                                        },
-                                        {
-                                            title: "Graphic Designer",
-                                            desc: "There are more than 100 participants",
-                                            icon: <Layers size={18} className="text-orange-600" />,
-                                            bg: "bg-orange-100",
-                                        },
-                                        {
-                                            title: "Brand Designer",
-                                            desc: "All categories of food for you",
-                                            icon: <Megaphone size={18} className="text-blue-600" />,
-                                            bg: "bg-blue-100",
-                                        },
-                                    ].map((item, i) => (
-                                        <div
-                                            key={i}
-                                            className="border border-gray-500 rounded-xl p-3 hover:bg-gray-50 cursor-pointer flex items-start gap-3"
-                                        >
-                                            <div className={`${item.bg} p-2 rounded-md flex-shrink-0`}>{item.icon}</div>
-                                            <div>
-                                                <h4 className="font-medium text-gray-800">{item.title}</h4>
-                                                <p className="text-xs text-gray-500">{item.desc}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {/* <p className="text-sm text-blue-600 font-medium cursor-pointer">
-                                    View More Category →
-                                </p> */}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] flex flex-col">
-                        <h2 className="text-lg font-semibold mb-4">Recent Jobs</h2>
-                        <div className="grid grid-cols-2 gap-3 flex-1">
-                            {recentJobs.length > 0 ? recentJobs.slice(0, 4).map((job, i) => {
-                                const colors = [
-                                    { color: "bg-yellow-50", text: "text-yellow-600", border: "border-yellow-200" },
-                                    { color: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
-                                    { color: "bg-green-50", text: "text-green-600", border: "border-green-200" },
-                                    { color: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" },
-                                ];
-                                const colorSet = colors[i % 4];
-                                
-                                const jobTitle = job.offerId?.jobTitle || job.title || 'Untitled Job';
-                                const companyName = job.companyName || job.offerId?.companyName || 'N/A';
-                                const city = job.offerId?.city || job.location || 'N/A';
-                                
-                                return (
-                                    <div
-                                        key={job._id || i}
-                                        className={`${colorSet.color} ${colorSet.border} border rounded-xl p-3 flex flex-col justify-between`}
-                                    >
-                                        <div>
-                                            <h4 className={`font-semibold ${colorSet.text} text-sm truncate`}>{jobTitle}</h4>
-                                            <p className="text-gray-600 text-xs mt-1 truncate">{companyName}</p>
-                                        </div>
-                                        <div className="mt-2">
-                                            <p className="text-gray-500 text-xs truncate">{city}</p>
-                                            {/* <button className="text-blue-600 text-xs mt-1">View →</button> */}
-                                        </div>
-                                    </div>
-                                );
-                            }) : (
-                                <>
-                                    {[
-                                        { title: "UI/UX Designer", color: "bg-yellow-50", text: "text-yellow-600" },
-                                        { title: "Full Stack Dev", color: "bg-blue-50", text: "text-blue-600" },
-                                        { title: "Data Analyst", color: "bg-green-50", text: "text-green-600" },
-                                        { title: "Graphic Design", color: "bg-pink-50", text: "text-pink-600" },
-                                    ].map((item, i) => (
-                                        <div
-                                            key={i}
-                                            className={`${item.color} rounded-xl p-3 flex flex-col justify-between`}
-                                        >
-                                            <div>
-                                                <h4 className={`font-semibold ${item.text} text-sm`}>{item.title}</h4>
-                                                <p className="text-gray-500 text-xs mt-1">Sample Company</p>
-                                            </div>
-                                            <button className="text-blue-600 text-xs mt-2">View →</button>
-                                        </div>
-                                    ))}
-                                </>
                             )}
+                            <div>
+                                <h4 className="text-gray-400 text-sm mb-3">Upcoming</h4>
+                                {upcomingJDs.length > 0 ? (
+                                    upcomingJDs.map((jd, index) => renderJDItem(jd, index))
+                                ) : (
+                                    <div className="text-gray-400 text-sm italic py-2">No upcoming JDs</div>
+                                )}
+                            </div>
                         </div>
-                        {/* {recentJobs.length > 0 && (
-                            <button className="text-blue-600 text-sm mt-4 font-medium text-center">
-                                View All Jobs →
-                            </button>
-                        )} */}
                     </div>
                 </div>
+            </div>
 
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] mt-6 p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                <div className="">
+                    <IntelligentHiringHero />
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-4 overflow-hidden">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold">All Job Descriptions</h2>
-                        {/* <button className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-100">
-                            <Download size={16} />
-                            Export
-                        </button> */}
+                        <h3 className="text-xl font-semibold">Candidates</h3>
+                        <button className="text-indigo-500 text-sm hover:underline">View All</button>
                     </div>
 
-                    <div className="overflow-x-auto p-1">
-                        <table className="w-full text-sm shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-2xl min-w-[900px]">
-                            <thead className="bg-gray-100 border-b border-gray-300">
-                                <tr className="text-left text-gray-700">
-                                    <th className="px-3 py-2">S.No</th>
-                                    <th className="px-3 py-2">Job Title</th>
-                                    <th className="px-3 py-2">Company</th>
-                                    <th className="px-3 py-2">City</th>
-                                    <th className="px-3 py-2">Employment Type</th>
-                                    <th className="px-3 py-2">Experience</th>
-                                    <th className="px-3 py-2">Salary</th>
-                                    <th className="px-3 py-2">Created By</th>
-                                    <th className="px-3 py-2">Created Date</th>
-                                    {/* <th className="px-3 py-2">Action</th> */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm min-w-[900px] table-auto border-collapse">
+                            <thead>
+                                <tr className="text-left text-gray-500 border-b">
+                                    <th className="py-3 px-4">Name</th>
+                                    <th className="py-3 px-4">Phone No.</th>
+                                    <th className="py-3 px-4">Job Title</th>
+                                    <th className="py-3 px-4">Skills</th>
+                                    <th className="py-3 px-4">Status</th>
                                 </tr>
                             </thead>
+                            <tbody className="divide-y">
+                                {recentCandidates.length > 0 ? (
+                                    recentCandidates.map((item, i) => (
+                                        <tr key={item.candidateId + i} className="hover:bg-gray-50">
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${i % 2 === 0 ? "bg-pink-400" : "bg-indigo-400"}`}>
+                                                        {item.name?.split(" ").map(n => n[0]).join("") || "?"}
+                                                    </div>
+                                                    <span className="whitespace-nowrap">{item.name || "N/A"}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 whitespace-nowrap">{item.phone || "N/A"}</td>
+                                            <td className="py-3 px-4 whitespace-nowrap">{item.jobTitle || "N/A"}</td>
+                                            <td className="py-3 px-4">
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {item.skills && item.skills.length > 0 ? (
+                                                        (() => {
+                                                            const allSkills = item.skills
+                                                                .flatMap(skill =>
+                                                                    typeof skill === 'string'
+                                                                        ? skill.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                                                                        : [skill]
+                                                                );
 
-                            <tbody>
-                                {paginatedOffers.length > 0 ? paginatedOffers.map((jd, i) => (
-                                    <tr
-                                        key={jd._id || i}
-                                        className="hover:bg-gray-50 border-b border-gray-300 last:border-0"
-                                    >
-                                        <td className="px-3 py-3">{offersStartIndex + i + 1}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap font-medium">
-                                            {jd.offerId?.jobTitle || jd.title || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            {jd.companyName || jd.offerId?.companyName || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            {jd.offerId?.city || jd.location || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            {jd.offerId?.employmentType || jd.employmentType || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {jd.offerId?.experience || jd.experience || 'N/A'} {(jd.offerId?.experience || jd.experience) ? 'years' : ''}
-                                        </td>
-                                        <td className="px-3 py-3">{jd.salaryRange || 'N/A'}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            {jd.createdBy?.name || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            {jd.createdAt ? new Date(jd.createdAt).toLocaleDateString() : 'N/A'}
-                                        </td>
-                                        {/* <td className="px-3 py-3">
-                                            <div className="flex gap-2">
-                                                <div className="p-1 rounded-sm border border-blue-400">
-                                                    <Eye size={16} className="text-blue-600 cursor-pointer" />
+                                                            return (
+                                                                <>
+                                                                    {allSkills.slice(0, 3).map((skill, idx) => (
+                                                                        <span
+                                                                            key={idx}
+                                                                            className={`px-2 py-0.5 rounded-full text-xs ${i % 2 === 0 ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}
+                                                                        >
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                    {allSkills.length > 3 && (
+                                                                        <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+                                                                            +{allSkills.length - 3}
+                                                                        </span>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()
+                                                    ) : (
+                                                        <span className="text-gray-400">No skills</span>
+                                                    )}
                                                 </div>
-                                                <div className="p-1 rounded-sm border-blue-400 border">
-                                                    <Trash2 size={16} className="text-red-500 cursor-pointer" />
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.status === "filtered" ? "bg-green-500" : "bg-red-500"}`}></span>
+                                                    <span className={`capitalize ${item.status === "filtered" ? "text-green-600" : "text-red-500"}`}>
+                                                        {item.status || "Unknown"}
+                                                    </span>
                                                 </div>
-                                            </div>
-                                        </td> */}
-                                    </tr>
-                                )) : (
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
                                     <tr>
-                                        <td colSpan="10" className="px-3 py-6 text-center text-gray-500">
-                                            No job descriptions available
+                                        <td colSpan="5" className="py-8 text-center text-gray-400">
+                                            No recent candidates found
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
-
-                    {allJdData.length > offersPerPage && (
-                        <Pagination
-                            currentPage={offersPage}
-                            totalPages={totalOffersPages}
-                            onPageChange={handleOffersPageChange}
-                        />
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center min-h-[150px]">
-                        <h3 className="text-sm text-gray-500 mb-1">TOTAL</h3>
-                        <h1 className="text-3xl font-bold text-blue-600">{totalJd}</h1>
-                        <p className="text-sm text-gray-500">Job Descriptions</p>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center min-h-[150px]">
-    <h3 className="text-sm text-gray-500 mb-1">BY RECRUITER</h3>
-                        <h1 className="text-3xl font-bold text-pink-600">{jdByRecruiter}</h1>
-                        <p className="text-sm text-gray-500">Created by You</p>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[150px] sm:col-span-2 lg:col-span-1 overflow-hidden">
-    <h3 className="text-xs sm:text-sm text-gray-500 mb-1 text-center">CANDIDATES</h3>
-    <h1 className="text-2xl sm:text-3xl font-bold text-lime-600">{totalCandidates}</h1>
-    <p className="text-xs sm:text-sm text-gray-500 text-center">Total Registered</p>
-    <div className="w-full mt-4 max-w-full">
-        <div className="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-1 gap-2">
-            <span className="truncate">Recruiter Contribution</span>
-            <span className="flex-shrink-0">{recruiterJdPercentage}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-                className="bg-pink-500 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(recruiterJdPercentage, 100)}%` }}
-            ></div>
-        </div>
-    </div>
-</div>
                 </div>
             </div>
         </div>
     );
-}
+};
+
+export default RecruiterDashboard;

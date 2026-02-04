@@ -367,11 +367,21 @@ const AllJDs = () => {
                             >
                                 <h2 className="text-xl font-bold text-gray-900 mb-3">{candidate.title}</h2>
 
-                                <div className="flex items-center gap-2 mb-4">
-                                    <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                    <span className="text-sm text-green-600 font-medium">
-                                        {candidate.location}
-                                    </span>
+                                <div className="flex items-start gap-2 mb-4 border border-green-300 rounded-md p-2">
+                                    <MapPin className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                                    <div className="flex flex-wrap gap-1.5 h-[50px] overflow-y-auto pr-2">
+                                        {Array.isArray(candidate.location)
+                                            ? candidate.location.map((loc, index) => (
+                                                <span
+                                                    key={index}
+                                                    className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full border border-green-200 h-fit"
+                                                >
+                                                    {loc}
+                                                </span>
+                                            ))
+                                            : <span className="text-sm text-green-600 font-medium">{candidate.location}</span>
+                                        }
+                                    </div>
                                 </div>
 
                                 <div className="mb-4">

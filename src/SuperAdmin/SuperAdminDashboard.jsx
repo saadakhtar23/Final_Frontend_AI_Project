@@ -1,581 +1,572 @@
 import React, { useEffect, useState } from "react";
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area, RadialBarChart, RadialBar
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    RadialBarChart,
+    RadialBar,
 } from "recharts";
-import img2 from '../assets/SADashImg1.png'
-import img1 from '../assets/SADashImg2.png'
-import img3 from '../assets/SADashImg3.png'
-import axios from "axios";
+import { MoreHorizontal, FileText, BarChart2 } from "lucide-react";
+import tal from "../img/TAL.png"
+import isl from "../img/ISL.png"
+import ta from "../img/TA.png"
+import te from "../img/TE.png"
+import RobotHeroAnimation from "./Component/RobotHeroAnimation";
 import { superAdminBaseUrl } from "../utils/ApiConstants";
+import axios from "axios";
 
 export default function SuperAdminDashboard() {
     const [companies, setCompanies] = useState([]);
     const [enquiries, setEnquiries] = useState([]);
     const [tickets, setTickets] = useState([]);
     const [admins, setAdmins] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [totalCompanies, setTotalCompanies] = useState(0);
+    const [totalEnquiries, setTotalEnquiries] = useState(0);
+    const [totalTickets, setTotalTickets] = useState(0);
+    const [distributionData, setDistributionData] = useState([]);
+    const [performanceData, setPerformanceData] = useState([]);
+    const [availableYears, setAvailableYears] = useState([]);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [allCompaniesData, setAllCompaniesData] = useState([]);
+    const [allEnquiriesData, setAllEnquiriesData] = useState([]);
+    const [allTicketsData, setAllTicketsData] = useState([]);
+    
+    const [distributionYear, setDistributionYear] = useState(new Date().getFullYear());
+    const [distributionAvailableYears, setDistributionAvailableYears] = useState([]);
+
+    const [trendTotals, setTrendTotals] = useState({ enquiries: 0, tickets: 0, companies: 0 });
+
+    const [userName, setUserName] = useState("User");
+    const [currentDate, setCurrentDate] = useState("");
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 17) return "Good Afternoon";
+        return "Good Evening";
+    };
+
+    const getCompanyTypeColor = (type) => {
+        const typeColors = {
+            "Product": "bg-blue-100 text-blue-600",
+            "product": "bg-blue-100 text-blue-600",
+            "IT": "bg-red-100 text-red-600",
+            "Non Tech": "bg-pink-100 text-pink-600",
+        };
+        return typeColors[type] || "bg-gray-100 text-gray-600";
+    };
+
+    const getInitials = (name) => {
+        if (!name) return "NA";
+        return name
+            .split(" ")
+            .map((word) => word[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        const date = new Date(dateString);
+        const options = { day: "2-digit", month: "short", year: "numeric" };
+        return date.toLocaleDateString("en-GB", options).replace(/ /g, "-");
+    };
+
+    const getAvailableYears = (companiesData, enquiriesData, ticketsData) => {
+        const yearsSet = new Set();
+
+        companiesData.forEach((company) => {
+            if (company.createdAt) {
+                const year = new Date(company.createdAt).getFullYear();
+                yearsSet.add(year);
+            }
+        });
+
+        enquiriesData.forEach((enquiry) => {
+            if (enquiry.createdAt) {
+                const year = new Date(enquiry.createdAt).getFullYear();
+                yearsSet.add(year);
+            }
+        });
+
+        ticketsData.forEach((ticket) => {
+            if (ticket.createdAt) {
+                const year = new Date(ticket.createdAt).getFullYear();
+                yearsSet.add(year);
+            }
+        });
+
+        return Array.from(yearsSet).sort((a, b) => b - a);
+    };
+
+    const calculateMonthlyTrends = (companiesData, enquiriesData, ticketsData, year) => {
+        const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+
+        const monthlyData = months.map((month, index) => ({
+            name: month,
+            monthIndex: index,
+            enquiries: 0,
+            companies: 0,
+            tickets: 0
+        }));
+
+        companiesData.forEach((company) => {
+            if (company.createdAt) {
+                const date = new Date(company.createdAt);
+                const companyYear = date.getFullYear();
+                if (companyYear === year) {
+                    const monthIndex = date.getMonth();
+                    monthlyData[monthIndex].companies += 1;
+                }
+            }
+        });
+
+        enquiriesData.forEach((enquiry) => {
+            if (enquiry.createdAt) {
+                const date = new Date(enquiry.createdAt);
+                const enquiryYear = date.getFullYear();
+                if (enquiryYear === year) {
+                    const monthIndex = date.getMonth();
+                    monthlyData[monthIndex].enquiries += 1;
+                }
+            }
+        });
+
+        ticketsData.forEach((ticket) => {
+            if (ticket.createdAt) {
+                const date = new Date(ticket.createdAt);
+                const ticketYear = date.getFullYear();
+                if (ticketYear === year) {
+                    const monthIndex = date.getMonth();
+                    monthlyData[monthIndex].tickets += 1;
+                }
+            }
+        });
+
+        return monthlyData;
+    };
+
+    const calculateTrendTotals = (monthlyData) => {
+        let totalEnquiries = 0;
+        let totalTickets = 0;
+        let totalCompanies = 0;
+
+        monthlyData.forEach((month) => {
+            totalEnquiries += month.enquiries;
+            totalTickets += month.tickets;
+            totalCompanies += month.companies;
+        });
+
+        return { enquiries: totalEnquiries, tickets: totalTickets, companies: totalCompanies };
+    };
+
+    const calculateDistributionData = (companiesData, enquiriesData, ticketsData, year) => {
+        let enquiryCount = 0;
+        let ticketCount = 0;
+        let companyCount = 0;
+
+        enquiriesData.forEach((enquiry) => {
+            if (enquiry.createdAt) {
+                const enquiryYear = new Date(enquiry.createdAt).getFullYear();
+                if (enquiryYear === year) {
+                    enquiryCount += 1;
+                }
+            }
+        });
+
+        ticketsData.forEach((ticket) => {
+            if (ticket.createdAt) {
+                const ticketYear = new Date(ticket.createdAt).getFullYear();
+                if (ticketYear === year) {
+                    ticketCount += 1;
+                }
+            }
+        });
+
+        companiesData.forEach((company) => {
+            if (company.createdAt) {
+                const companyYear = new Date(company.createdAt).getFullYear();
+                if (companyYear === year) {
+                    companyCount += 1;
+                }
+            }
+        });
+
+        const distribution = [
+            { name: "Enquiries", value: enquiryCount, fill: "#3b82f6" },
+            { name: "Tickets", value: ticketCount, fill: "#f59e0b" },
+            { name: "Companies", value: companyCount, fill: "#d946ef" },
+        ];
+
+        return distribution;
+    };
+
+    const handleYearChange = (e) => {
+        const year = parseInt(e.target.value);
+        setSelectedYear(year);
+        const monthlyTrends = calculateMonthlyTrends(allCompaniesData, allEnquiriesData, allTicketsData, year);
+        setPerformanceData(monthlyTrends);
+        const totals = calculateTrendTotals(monthlyTrends);
+        setTrendTotals(totals);
+    };
+
+    const handleDistributionYearChange = (e) => {
+        const year = parseInt(e.target.value);
+        setDistributionYear(year);
+        const distribution = calculateDistributionData(allCompaniesData, allEnquiriesData, allTicketsData, year);
+        setDistributionData(distribution);
+    };
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get(`${superAdminBaseUrl}/superadmin/profile`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (response.data.status === 'success') {
+                    setUserName(response.data.data.name);
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            }
+        };
+
+        fetchUserData();
+    }, []);
+
+    useEffect(() => {
+        const updateDate = () => {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            setCurrentDate(now.toLocaleDateString('en-US', options));
+        };
+
+        updateDate(); 
+        
+        const interval = setInterval(updateDate, 60000);
+        
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const fetchAllData = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const [allCompany, allEnquiry, allTickets, getAllAdmins] = await Promise.all([
-                    axios.get(`${superAdminBaseUrl}/company/`, { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get(`${superAdminBaseUrl}/enquiry/all`, { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get(`${superAdminBaseUrl}/superadmin/allTickets`, { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get(`${superAdminBaseUrl}/superadmin/getAllAdmins`, { headers: { Authorization: `Bearer ${token}` } }),
+                const [
+                    allCompanies,
+                    allEnquiries,
+                    allTickets,
+                    allAdmins
+                ] = await Promise.all([
+                    axios.get(`${superAdminBaseUrl}/company/`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get(`${superAdminBaseUrl}/enquiry/all`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get(`${superAdminBaseUrl}/superadmin/allTickets`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get(`${superAdminBaseUrl}/superadmin/getAllAdmins`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
                 ]);
-                setCompanies(allCompany.data.companies || allCompany.data || []);
-                setEnquiries(allEnquiry.data.data || allEnquiry.data || []);
-                setTickets(allTickets.data.tickets || allTickets.data || []);
-                const adminData = getAllAdmins.data.admins || getAllAdmins.data.data || getAllAdmins.data.users || getAllAdmins.data;
-                setAdmins(Array.isArray(adminData) ? adminData : []);
-                setLoading(false);
-            } catch (error) {
+
+                const companiesData = allCompanies.data.companies || [];
+                setCompanies(companiesData);
+                setAllCompaniesData(companiesData);
+                setTotalCompanies(companiesData.length);
+
+                const enquiriesData = allEnquiries.data.data || [];
+                setEnquiries(enquiriesData);
+                setAllEnquiriesData(enquiriesData);
+                setTotalEnquiries(allEnquiries.data.results || enquiriesData.length);
+
+                const ticketsData = allTickets.data.tickets || [];
+                setTickets(ticketsData);
+                setAllTicketsData(ticketsData);
+                setTotalTickets(ticketsData.length);
+
+                const adminsData = allAdmins.data.data || [];
+                setAdmins(adminsData);
+
+                const years = getAvailableYears(companiesData, enquiriesData, ticketsData);
+                setAvailableYears(years);
+                setDistributionAvailableYears(years);
+
+                const defaultYear = years.length > 0 ? years[0] : new Date().getFullYear();
+                setSelectedYear(defaultYear);
+                setDistributionYear(defaultYear);
+
+                const distribution = calculateDistributionData(companiesData, enquiriesData, ticketsData, defaultYear);
+                setDistributionData(distribution);
+
+                const monthlyTrends = calculateMonthlyTrends(companiesData, enquiriesData, ticketsData, defaultYear);
+                setPerformanceData(monthlyTrends);
+
+                const totals = calculateTrendTotals(monthlyTrends);
+                setTrendTotals(totals);
+            }
+            catch (error) {
                 console.error("Error fetching dashboard data:", error);
-                setLoading(false);
             }
         };
+
         fetchAllData();
     }, []);
 
-    const getDateFromObjectId = (objectId) => {
-        if (!objectId || typeof objectId !== 'string' || objectId.length !== 24) return null;
-        try {
-            return new Date(parseInt(objectId.substring(0, 8), 16) * 1000);
-        } catch (e) {
-            return null;
-        }
-    };
-
-    const getItemDate = (item) => {
-        if (item.createdAt) return new Date(item.createdAt);
-        if (item._id) return getDateFromObjectId(item._id);
-        return null;
-    };
-
-    const getWeeklyGrowthData = () => {
-        const weeks = [];
-        const today = new Date();
-        for (let i = 7; i >= 0; i--) {
-            const weekStart = new Date(today);
-            weekStart.setDate(weekStart.getDate() - (i * 7));
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            let enquiryCount = 0, companyCount = 0, ticketCount = 0;
-            enquiries.forEach(enquiry => {
-                const date = getItemDate(enquiry);
-                if (date && date >= weekStart && date <= weekEnd) enquiryCount += 1;
-            });
-            companies.forEach(company => {
-                const date = getItemDate(company);
-                if (date && date >= weekStart && date <= weekEnd) companyCount += 1;
-            });
-            tickets.forEach(ticket => {
-                const date = getItemDate(ticket);
-                if (date && date >= weekStart && date <= weekEnd) ticketCount += 1;
-            });
-            weeks.push({
-                week: `W${8 - i}`,
-                fullDate: weekStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-                enquiries: enquiryCount,
-                companies: companyCount,
-                tickets: ticketCount
-            });
-        }
-        return weeks;
-    };
-
-    const getCompanyTypesData = () => {
-        const typeCount = {};
-        let totalEmployees = 0;
-        companies.forEach(company => {
-            const type = company.companyType?.toLowerCase() || 'unknown';
-            typeCount[type] = (typeCount[type] || 0) + 1;
-            totalEmployees += company.numberOfEmployees || 0;
-        });
-        const colors = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
-        const typeData = Object.entries(typeCount).map(([name, value], index) => ({
-            name: name.charAt(0).toUpperCase() + name.slice(1),
-            value,
-            color: colors[index % colors.length],
-            fill: colors[index % colors.length]
-        }));
-        return {
-            typeData,
-            totalEmployees,
-            avgEmployees: companies.length > 0 ? Math.round(totalEmployees / companies.length) : 0
-        };
-    };
-
-    const getOverallDistributionData = () => {
-        return [
-            { name: "Enquiries", value: enquiries.length, color: "#3b82f6" },
-            { name: "Tickets", value: tickets.length, color: "#f87171" },
-            { name: "Companies", value: companies.length, color: "#22c55e" },
-        ].filter(item => item.value > 0);
-    };
-
-    const getMonthlyData = () => {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthlyData = months.map(month => ({ name: month, enquiries: 0, companies: 0, tickets: 0 }));
-        enquiries.forEach(enquiry => {
-            const date = getItemDate(enquiry);
-            if (date) monthlyData[date.getMonth()].enquiries += 1;
-        });
-        companies.forEach(company => {
-            const date = getItemDate(company);
-            if (date) monthlyData[date.getMonth()].companies += 1;
-        });
-        tickets.forEach(ticket => {
-            const date = getItemDate(ticket);
-            if (date) monthlyData[date.getMonth()].tickets += 1;
-        });
-        return monthlyData;
-    };
-
-    const getDailyTestData = () => {
-        const last14Days = [];
-        const today = new Date();
-        for (let i = 13; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
-            let enquiryCount = 0, ticketCount = 0, companyCount = 0;
-            enquiries.forEach(enquiry => {
-                const itemDate = getItemDate(enquiry);
-                if (itemDate && itemDate.toISOString().split('T')[0] === dateStr) enquiryCount += 1;
-            });
-            tickets.forEach(ticket => {
-                const itemDate = getItemDate(ticket);
-                if (itemDate && itemDate.toISOString().split('T')[0] === dateStr) ticketCount += 1;
-            });
-            companies.forEach(company => {
-                const itemDate = getItemDate(company);
-                if (itemDate && itemDate.toISOString().split('T')[0] === dateStr) companyCount += 1;
-            });
-            last14Days.push({
-                day: date.getDate(),
-                date: date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-                enquiries: enquiryCount,
-                tickets: ticketCount,
-                companies: companyCount
-            });
-        }
-        return last14Days;
-    };
-
-    const getWeeklyDailyTotals = () => {
-        const today = new Date();
-        const oneWeekAgo = new Date(today);
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const todayStr = today.toISOString().split('T')[0];
-        let weeklyTotal = 0, dailyTotal = 0;
-        [...enquiries, ...tickets, ...companies].forEach(item => {
-            const itemDate = getItemDate(item);
-            if (itemDate) {
-                if (itemDate >= oneWeekAgo) weeklyTotal += 1;
-                if (itemDate.toISOString().split('T')[0] === todayStr) dailyTotal += 1;
-            }
-        });
-        return { weeklyTotal, dailyTotal };
-    };
-
-    const weeklyGrowthData = getWeeklyGrowthData();
-    const companyTypesInfo = getCompanyTypesData();
-    const overallPieData = getOverallDistributionData().length > 0 ? getOverallDistributionData() : [{ name: "No Data", value: 1, color: "#e5e7eb" }];
-    const dailyTestData = getDailyTestData();
-    const { weeklyTotal, dailyTotal } = getWeeklyDailyTotals();
-    const lineData = getMonthlyData();
-    const adminCount = Array.isArray(admins) ? admins.length : (typeof admins === 'object' && admins !== null) ? Object.keys(admins).length : 0;
-
-    const statsCards = [
-        { title: "Total Companies", value: companies.length, color: "bg-yellow-100" },
-        { title: "Total Enquiries", value: enquiries.length, color: "bg-blue-100" },
-        { title: "Total Tickets", value: tickets.length, color: "bg-green-100" },
-        { title: "Total Admins", value: adminCount, color: "bg-red-100" },
-    ];
-
-    const latestCompanies = [...companies].reverse().slice(0, 5);
-    const latestEnquiries = [...enquiries].slice(0, 5);
-    const latestTickets = [...tickets].reverse().slice(0, 5);
-
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
-    const truncateText = (text, maxLength = 30) => {
-        if (!text) return 'N/A';
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-    };
+    const distributionTotal = distributionData.reduce((sum, item) => sum + item.value, 0);
 
     return (
-        <div className="min-h-screen p-4 overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="w-full">
-                        <img src={img1} alt="AI Bot" className="w-full h-full object-cover rounded-lg" />
+        <div className="min-h-screen">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                {/* UPDATED BANNER with real-time date and name */}
+                <div className="lg:col-span-2 bg-[#b936ee] rounded-2xl p-8 text-white flex flex-col justify-center relative overflow-hidden shadow-lg">
+                    <div className="relative z-10">
+                        <p className="text-sm font-medium opacity-90 mb-2">{currentDate}</p>
+                        <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {userName}</h1>
+                        <p className="text-sm opacity-80 max-w-md">
+                            Control everything effortlessly using superpowers, smart tools, and stress-free efficiency.
+                        </p>
                     </div>
-                    <div className="w-full">
-                        <img src={img2} alt="Dashboard Image" className="w-full h-full object-cover rounded-lg" />
-                    </div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full translate-x-10 -translate-y-10"></div>
+                    <div className="absolute bottom-0 right-10 w-24 h-24 bg-white opacity-10 rounded-full translate-y-10"></div>
                 </div>
-                <div className="lg:col-span-2 grid grid-cols-2 gap-3">
-                    {statsCards.map((item, i) => (
-                        <div key={i} className={`rounded-xl shadow-md p-3 sm:p-4 ${item.color} transition-all hover:shadow-lg`}>
-                            <h3 className="text-xs sm:text-sm lg:text-base text-gray-700 font-semibold">{item.title}</h3>
-                            <p className="text-xl sm:text-2xl lg:text-3xl font-bold mt-1">{loading ? '...' : item.value}</p>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-1">{item.change}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 lg:col-span-7">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-lg">Weekly Growth Trends</h3>
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Last 8 Weeks</span>
-                    </div>
-                    <div className="h-48 sm:h-56 lg:h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={weeklyGrowthData} margin={{ left: 0, right: 0, top: 10, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorEnquiries" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorCompanies" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis dataKey="week" tick={{ fontSize: 11 }} axisLine={{ stroke: '#e5e7eb' }} />
-                                <YAxis tick={{ fontSize: 11 }} axisLine={{ stroke: '#e5e7eb' }} />
-                                <Tooltip content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                        const data = weeklyGrowthData.find(d => d.week === label);
-                                        return (
-                                            <div className="bg-white p-3 shadow-lg rounded-lg border text-xs">
-                                                <p className="font-semibold text-gray-700 mb-2">{label} - {data?.fullDate}</p>
-                                                <div className="space-y-1">
-                                                    <p className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                                        <span className="text-gray-600">Enquiries:</span>
-                                                        <span className="font-medium">{data?.enquiries}</span>
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                        <span className="text-gray-600">Companies:</span>
-                                                        <span className="font-medium">{data?.companies}</span>
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                                        <span className="text-gray-600">Tickets:</span>
-                                                        <span className="font-medium">{data?.tickets}</span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }} />
-                                <Area type="monotone" dataKey="enquiries" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorEnquiries)" />
-                                <Area type="monotone" dataKey="companies" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorCompanies)" />
-                                <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorTickets)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center gap-6 mt-3">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            <span className="text-xs text-gray-600">Enquiries</span>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between relative">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">Total</p>
+                            <p className="text-gray-500 text-sm font-medium">Companies</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span className="text-xs text-gray-600">Companies</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                            <span className="text-xs text-gray-600">Tickets</span>
+                        <div className="">
+                            <img src={ta} alt="" />
                         </div>
                     </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 lg:col-span-3 flex flex-col items-center justify-center">
-                    <h3 className="font-semibold text-lg mb-4">Overall Distribution</h3>
-                    <div className="h-48 sm:h-56 lg:h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart margin={{ left: 0, right: 0 }}>
-                                <Pie data={overallPieData} dataKey="value" outerRadius="80%" innerRadius="50%" paddingAngle={4} cx="50%" cy="50%" label={({ value }) => `${value}`}>
-                                    {overallPieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-3 mt-2">
-                        {overallPieData.map((item, index) => (
-                            <div key={index} className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span className="text-xs sm:text-sm">{item.name}: {item.value}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 w-full">
-                    <h3 className="font-semibold text-lg mb-4">Performance Trends</h3>
-                    <div className="h-48 sm:h-56 lg:h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={lineData} margin={{ left: 0, right: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={'preserveStartEnd'} />
-                                <YAxis tick={{ fontSize: 12 }} />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="enquiries" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} name="Enquiries" />
-                                <Line type="monotone" dataKey="tickets" stroke="#f87171" strokeWidth={3} dot={{ r: 3 }} name="Tickets" />
-                                <Line type="monotone" dataKey="companies" stroke="#22c55e" strokeWidth={3} dot={{ r: 3 }} name="Companies" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4">
-                    <h3 className="font-semibold text-lg mb-4 text-gray-800">Latest Companies</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Company</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Type</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Email</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">State</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="4" className="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
-                                ) : latestCompanies.length > 0 ? (
-                                    latestCompanies.map((company, index) => (
-                                        <tr key={company._id || index} className="border-b hover:bg-gray-50">
-                                            <td className="px-3 py-2 font-medium text-gray-800">{truncateText(company.companyName, 20)}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`px-2 py-1 rounded-full text-xs ${company.companyType?.toLowerCase() === 'tech' ? 'bg-blue-100 text-blue-700' : company.companyType?.toLowerCase() === 'non tech' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'}`}>
-                                                    {company.companyType || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2 text-gray-600">{truncateText(company.email, 25)}</td>
-                                            <td className="px-3 py-2 text-gray-600">{company.state || 'N/A'}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="4" className="px-3 py-4 text-center text-gray-500">No companies found</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                    <div className="flex justify-between items-center mt-4">
+                        <h2 className="text-4xl font-bold text-pink-500">{totalCompanies}</h2>
+                        <img src={tal} alt="" className="w-24 h-10" />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4">
-                    <h3 className="font-semibold text-lg mb-4 text-gray-800">Latest Enquiries</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Company</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Email</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Phone</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="4" className="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
-                                ) : latestEnquiries.length > 0 ? (
-                                    latestEnquiries.map((enquiry, index) => (
-                                        <tr key={enquiry._id || index} className="border-b hover:bg-gray-50">
-                                            <td className="px-3 py-2 font-medium text-gray-800">{truncateText(enquiry.companyName, 20)}</td>
-                                            <td className="px-3 py-2 text-gray-600">{truncateText(enquiry.emailid, 25)}</td>
-                                            <td className="px-3 py-2 text-gray-600">{enquiry.phone || 'N/A'}</td>
-                                            <td className="px-3 py-2 text-gray-600">{formatDate(enquiry.createdAt)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="4" className="px-3 py-4 text-center text-gray-500">No enquiries found</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between relative">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">Total</p>
+                            <p className="text-gray-500 text-sm font-medium">Enquiries</p>
+                        </div>
+                        <div className="">
+                            <img src={te} alt="" />
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-4">
+                        <h2 className="text-4xl font-bold text-blue-500">{totalEnquiries}</h2>
+                        <img src={isl} alt="" className="w-24 h-10" />
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 lg:col-span-2">
-                    <h3 className="font-semibold text-lg mb-4 text-gray-800">Latest Tickets</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Subject</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Admin</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Replies</th>
-                                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-blue-900">Overall Distribution</h3>
+                        <select
+                            value={distributionYear}
+                            onChange={handleDistributionYearChange}
+                            className="bg-gray-50 border border-gray-200 text-xs text-gray-700 rounded-full px-3 py-1 outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer"
+                        >
+                            {distributionAvailableYears.map((year) => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex-1 relative flex justify-center items-center">
+                        <div className="w-full h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadialBarChart
+                                    cx="50%" cy="50%"
+                                    innerRadius="40%" outerRadius="100%"
+                                    barSize={12}
+                                    data={distributionData}
+                                    startAngle={90} endAngle={450}
+                                >
+                                    <RadialBar background clockWise dataKey="value" cornerRadius={10} />
+                                </RadialBarChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
+                                <p className="text-gray-400 text-xs">Total</p>
+                                <p className="text-gray-400 text-xs">Records</p>
+                                <p className="text-2xl font-bold text-gray-800">{distributionTotal}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center gap-4 mt-2 flex-wrap">
+                        {distributionData.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-1">
+                                <div className="w-8 h-2 rounded-full" style={{ backgroundColor: entry.fill }}></div>
+                                <span className="text-xs text-gray-600 font-medium">
+                                    {entry.name} <span className="font-bold text-gray-800">{entry.value}</span>
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-x-auto">
+                    <div className="flex justify-between items-center px-4 py-2">
+                        <h3 className="text-lg font-bold text-[#05004E]">Latest Companies</h3>
+                        <a href="#" className="text-sm text-blue-600 underline">View All</a>
+                    </div>
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[650px] text-sm text-left">
+                            <thead className="text-xs text-gray-900 font-bold uppercase bg-[#F5F5F5]">
+                                <tr>
+                                    <th className="py-3 px-2">Company</th>
+                                    <th className="py-3 px-2">Type</th>
+                                    <th className="py-3 px-2">Email</th>
+                                    <th className="py-3 px-2">State</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="5" className="px-3 py-4 text-center text-gray-500">Loading...</td></tr>
-                                ) : latestTickets.length > 0 ? (
-                                    latestTickets.map((ticket, index) => (
-                                        <tr key={ticket._id || index} className="border-b hover:bg-gray-50">
-                                            <td className="px-3 py-2 font-medium text-gray-800">{truncateText(ticket.subject, 25)}</td>
-                                            <td className="px-3 py-2 text-gray-600">{truncateText(ticket.adminName, 20)}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${ticket.status?.toLowerCase() === 'open' ? 'bg-red-100 text-red-700' : ticket.status?.toLowerCase() === 'closed' ? 'bg-green-100 text-green-700' : ticket.status?.toLowerCase() === 'resolved' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                    {ticket.status || 'Open'}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2 text-gray-600">{ticket.replies?.length || 0}</td>
-                                            <td className="px-3 py-2 text-gray-600">{formatDate(ticket.createdAt)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="5" className="px-3 py-4 text-center text-gray-500">No tickets found</td></tr>
-                                )}
+                                {companies.slice(0, 5).map((company, index) => (
+                                    <tr key={company._id || index} className="border-b border-gray-50 hover:bg-gray-50">
+                                        <td className="py-3 px-2 flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-[10px] font-bold">
+                                                {getInitials(company.companyName)}
+                                            </div>
+                                            <span className="font-medium text-gray-800">{company.companyName}</span>
+                                        </td>
+                                        <td className="py-3 px-2">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${getCompanyTypeColor(company.companyType)}`}>
+                                                {company.companyType}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-2 text-gray-600">{company.email}</td>
+                                        <td className="py-3 px-2 text-gray-600">{company.state}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-[#05004E]">Performance Trends</h3>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-2 rounded-full bg-pink-400"></div>
+                            <span className="text-xs text-gray-500">Enquiries</span>
+                            <span className="text-xs font-bold text-gray-800">{trendTotals.enquiries}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-2 rounded-full bg-amber-400"></div>
+                            <span className="text-xs text-gray-500">Tickets</span>
+                            <span className="text-xs font-bold text-gray-800">{trendTotals.tickets}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-2 rounded-full bg-blue-400"></div>
+                            <span className="text-xs text-gray-500">Companies</span>
+                            <span className="text-xs font-bold text-gray-800">{trendTotals.companies}</span>
+                        </div>
+                        <select
+                            value={selectedYear}
+                            onChange={handleYearChange}
+                            className="bg-gray-50 border border-gray-200 text-sm text-gray-700 rounded-full px-4 py-1.5 outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer"
+                        >
+                            {availableYears.map((year) => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorEnquiries" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f472b6" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#f472b6" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorCompanies" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid vertical={true} horizontal={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                            <Tooltip
+                                contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                                itemStyle={{ fontSize: '12px' }}
+                                labelFormatter={(label) => `${label} ${selectedYear}`}
+                            />
+                            <Area type="monotone" dataKey="enquiries" stroke="#f472b6" strokeWidth={2} fillOpacity={1} fill="url(#colorEnquiries)" />
+                            <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorTickets)" />
+                            <Area type="monotone" dataKey="companies" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorCompanies)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="grid justify-between grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-x-auto">
+                    <div className="flex justify-between items-center px-4 py-2">
+                        <h3 className="text-lg font-bold text-[#05004E]">Latest Enquiries</h3>
+                        <a href="#" className="text-sm text-blue-600 underline">View All</a>
+                    </div>
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[650px] text-sm text-left">
+                            <thead className="text-xs text-gray-900 font-bold uppercase bg-[#F5F5F5]">
+                                <tr>
+                                    <th className="py-3 px-2">Company</th>
+                                    <th className="py-3 px-2">Phone</th>
+                                    <th className="py-3 px-2">Email</th>
+                                    <th className="py-3 px-2">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {enquiries.slice(0, 5).map((enquiry, index) => (
+                                    <tr key={enquiry._id || index} className="border-b border-[#ede6e6] hover:bg-gray-50">
+                                        <td className="py-3 px-2 flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                                                {getInitials(enquiry.companyName)}
+                                            </div>
+                                            <span className="font-medium text-gray-800 whitespace-nowrap">{enquiry.companyName}</span>
+                                        </td>
+                                        <td className="py-3 px-2 text-gray-600 whitespace-nowrap">{enquiry.phone}</td>
+                                        <td className="py-3 px-2 text-gray-600 whitespace-nowrap">{enquiry.emailid}</td>
+                                        <td className="py-3 px-2 text-gray-600 whitespace-nowrap">{formatDate(enquiry.createdAt)}</td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 flex flex-col">
-                    <h3 className="font-semibold text-lg mb-3 text-center">Company Insights</h3>
-                    <div className="h-36 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="90%" barSize={10} data={companyTypesInfo.typeData} startAngle={180} endAngle={0}>
-                                <RadialBar minAngle={15} background clockWise dataKey="value" cornerRadius={5} />
-                                <Tooltip content={({ payload }) => {
-                                    if (payload && payload.length) {
-                                        return (
-                                            <div className="bg-white px-3 py-2 shadow-lg rounded border text-xs">
-                                                <p className="font-medium">{payload[0].payload.name}</p>
-                                                <p className="text-gray-600">{payload[0].value} companies</p>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }} />
-                            </RadialBarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-2 mb-3">
-                        {companyTypesInfo.typeData.map((item, index) => (
-                            <div key={index} className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ backgroundColor: `${item.color}15` }}>
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span className="text-xs font-medium" style={{ color: item.color }}>{item.name}: {item.value}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-auto">
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 text-center">
-                            <p className="text-xs text-blue-600 font-medium">Total Employees</p>
-                            <p className="text-lg font-bold text-blue-700">{companyTypesInfo.totalEmployees}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-2 text-center">
-                            <p className="text-xs text-green-600 font-medium">Avg/Company</p>
-                            <p className="text-lg font-bold text-green-700">{companyTypesInfo.avgEmployees}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-between">
-                    <h2 className="text-gray-800 font-semibold text-lg mb-4">Daily Activity (Last 14 Days)</h2>
-                    <div className="flex flex-wrap items-baseline gap-6">
-                        <div>
-                            <p className="text-4xl font-bold text-blue-600">{weeklyTotal}</p>
-                            <p className="text-gray-500 text-sm">This Week</p>
-                        </div>
-                        <div>
-                            <p className="text-4xl font-bold text-green-600">{dailyTotal}</p>
-                            <p className="text-gray-500 text-sm">Today</p>
-                        </div>
-                    </div>
-                    <div className="mt-6 w-full h-36">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyTestData} margin={{ left: 0, right: 0 }}>
-                                <Tooltip content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                        const data = dailyTestData.find(d => d.day === label);
-                                        return (
-                                            <div className="bg-white p-2 shadow-lg rounded border text-xs">
-                                                <p className="font-medium mb-1">{data?.date}</p>
-                                                <p className="text-blue-600">Enquiries: {payload[0]?.value || 0}</p>
-                                                <p className="text-red-500">Tickets: {payload[1]?.value || 0}</p>
-                                                <p className="text-green-600">Companies: {payload[2]?.value || 0}</p>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }} />
-                                <Bar dataKey="enquiries" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="tickets" fill="#f87171" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="companies" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center gap-4 mt-3">
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            <span className="text-xs">Enquiries</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                            <span className="text-xs">Tickets</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span className="text-xs">Companies</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="w-full">
-                    <img src={img3} alt="AI Robot" className="w-full h-auto object-cover rounded-lg" />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                        <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 text-center">
-                            <p className="text-gray-400 text-sm mb-1">Top month</p>
-                            <h3 className="text-lg font-semibold text-orange-600">{new Date().toLocaleString('default', { month: 'long' })}</h3>
-                            <p className="text-gray-500 text-sm">{new Date().getFullYear()}</p>
-                        </div>
-                        <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 text-center">
-                            <p className="text-gray-400 text-sm mb-1">Top year</p>
-                            <h3 className="text-lg font-semibold text-gray-800">{new Date().getFullYear()}</h3>
-                        </div>
-                        <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 text-center sm:col-span-2">
-                            <p className="text-gray-400 text-sm mb-1">Top Companies</p>
-                            <div className="flex justify-center items-center gap-3">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png" alt="Company" className="w-8 h-8 rounded-full" />
-                                <span className="text-gray-800 font-medium text-sm sm:text-base">{latestCompanies[0]?.companyName || 'Netfotech Solutions'}</span>
-                            </div>
-                        </div>
-                    </div>
+                <div className="lg:col-span-2 w-full h-full rounded-2xl overflow-hidden min-h-[300px] flex flex-row-reverse sm:min-h-[350px] md:min-h-[400px] lg:min-h-full">
+                    <RobotHeroAnimation />
                 </div>
             </div>
         </div>
