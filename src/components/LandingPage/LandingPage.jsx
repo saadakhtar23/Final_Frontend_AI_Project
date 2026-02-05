@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useSocket from '../../utils/useSocket';
 import { Link, useNavigate } from 'react-router-dom';
 import { superAdminBaseUrl } from '../../utils/ApiConstants';
 import Logo from '../../img/Logo.png';
@@ -52,7 +53,27 @@ import toyo from '../../img/toyo.png'
 import quote from '../../img/quote.png'
 import axios from 'axios';
 
+function useFadeInAnimation() {
+  useEffect(() => {
+    if (!document.getElementById('fade-in-animation-style')) {
+      const style = document.createElement('style');
+      style.id = 'fade-in-animation-style';
+      style.innerHTML = `
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.25s ease;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+}
+
 const LandingPage = () => {
+  useFadeInAnimation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [formData, setFormData] = useState({
@@ -228,6 +249,16 @@ const LandingPage = () => {
     }
   };
 
+
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const userId = localStorage.getItem('userId'); // Replace with actual user ID logic
+
+  useSocket(userId, (data) => {
+    setNotifications((prev) => [data, ...prev]);
+  });
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -251,9 +282,72 @@ const LandingPage = () => {
             </nav>
 
             <div className="hidden md:flex items-center space-x-2">
-              {/* <button className="border border-[#6D28D9] bg-[#6D28D9] text-white px-6 py-1 rounded-2xl font-medium">
-                Get Started
-              </button> */}
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  className="relative p-2 rounded-full hover:bg-gray-100"
+                  onClick={() => setShowDropdown((prev) => !prev)}
+                  aria-label="Notifications"
+                >
+                  <svg className="w-6 h-6 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 animate-fade-in">
+                    <div className="p-4 border-b font-semibold text-[#6D28D9] flex items-center gap-2">
+                      <svg className="w-5 h-5 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                      Notifications
+                    </div>
+                    <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+                      {notifications.length === 0 ? (
+                        <li className="p-6 text-gray-400 text-center">No notifications yet.</li>
+                      ) : (
+                        notifications.map((notif, idx) => (
+                          <li key={idx} className="p-4 flex gap-3 items-start hover:bg-gray-50 transition-all duration-200">
+                            <div className="flex-shrink-0">
+                              <svg className="w-6 h-6 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-800 mb-1">{notif.message}</div>
+                              {notif.link && (
+                                <a href={notif.link} className="text-[#6D28D9] text-sm hover:underline font-semibold">View Details</a>
+                              )}
+                              <div className="text-xs text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString()}</div>
+                            </div>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+              {/* import { useEffect } from 'react'; */}
+
+              {/* function useFadeInAnimation() {
+                useEffect(() => {
+                  if (!document.getElementById('fade-in-animation-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'fade-in-animation-style';
+                    style.innerHTML = `
+                      @keyframes fade-in {
+                        from { opacity: 0; transform: translateY(-10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                      }
+                      .animate-fade-in {
+                        animation: fade-in 0.25s ease;
+                      }
+                    `;
+                    document.head.appendChild(style);
+                  }
+                }, [])
+              } */}
+              </div>
               <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => navigate('/login')}>
                 Login
               </button>
@@ -284,9 +378,6 @@ const LandingPage = () => {
                   </a>
                 ))}
                 <div className="flex flex-col space-y-2 pt-4">
-                  {/* <button className="border border-[#6D28D9] bg-[#6D28D9] text-white px-6 py-1 rounded-2xl font-medium">
-                    Get Started
-                  </button> */}
                   <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium">
                     Login
                   </button>
@@ -294,17 +385,6 @@ const LandingPage = () => {
                     Login as a candidate
                   </button>
                 </div>
-                {/* <div className="hidden md:flex items-center space-x-2">
-              <button className="border border-[#6D28D9] bg-[#6D28D9] text-white px-6 py-1 rounded-2xl font-medium">
-                Get Started
-              </button>
-              <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => navigate('/login')}>
-                Login
-              </button>
-              <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => navigate('/CandidateLogin')}>
-                Login as a candidate
-              </button>
-            </div> */}
               </nav>
             </div>
           )}

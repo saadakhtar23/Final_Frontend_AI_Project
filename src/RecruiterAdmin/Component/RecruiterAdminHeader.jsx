@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Search, Bell, MessageCircle, Menu, ChevronDown } from "lucide-react";
 import axios from "axios";
 import { baseUrl } from "../../utils/ApiConstants";
+import NotificationBell from '../../components/NotificationBell';
 import { useNavigate } from "react-router-dom";
 
 const RecruiterAdminHeader = ({ onMenuToggle }) => {
@@ -91,6 +92,7 @@ const RecruiterAdminHeader = ({ onMenuToggle }) => {
                 </div>
 
                 <div className="flex items-center space-x-4">
+                    {user && user._id && <NotificationBell userId={user._id} />}
                     <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             {user?.name ? user.name[0].toUpperCase() : "?"}
