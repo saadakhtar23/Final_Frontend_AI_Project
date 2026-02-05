@@ -35,7 +35,7 @@ const AdminHeader = ({ onMenuToggle }) => {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                // console.log(res.data);
+                console.log(res.data);
                 
                 setUser(res.data.data);
             } catch (err) {
@@ -69,7 +69,7 @@ const AdminHeader = ({ onMenuToggle }) => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <NotificationBell userId={user?._id} />
+                    {user && user._id && <NotificationBell userId={user._id} />}
                     <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             {user?.name ? user.name[0].toUpperCase() : "?"}

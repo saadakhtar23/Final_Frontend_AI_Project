@@ -2,9 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { Search, Bell, MessageCircle, Menu, ChevronDown } from "lucide-react";
 import axios from "axios";
 import { baseUrl } from "../../utils/ApiConstants";
-
 import { useNavigate } from "react-router-dom";
-
+import NotificationBell from '../../components/NotificationBell';
 
 const CandidateHeader = ({ onMenuToggle }) => {
     const [user, setUser] = useState(null);
@@ -119,8 +118,21 @@ const CandidateHeader = ({ onMenuToggle }) => {
                                 <div className="text-xs text-gray-500">candidate</div>
                             </div>
 
-                            <div className="w-9 h-9 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                {user?.name ? user.name[0].toUpperCase() : "?"}
+                            <div className="flex items-center space-x-4">
+                                {user && user._id && <NotificationBell userId={user._id} />}
+                                <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
+                                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                        {user?.name ? user.name[0].toUpperCase() : "?"}
+                                    </div>
+                                    <div className="hidden sm:block">
+                                        <p className="text-sm font-medium text-gray-700">
+                                            {user?.name || "Loading..."}
+                                        </p>
+                                        <p className="text-sm font-medium text-gray-700">
+                                            {user?.role || "Role..."}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                             {dropdownOpen && (

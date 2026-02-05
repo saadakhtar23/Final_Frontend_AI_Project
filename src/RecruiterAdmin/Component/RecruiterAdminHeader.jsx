@@ -92,7 +92,7 @@ const RecruiterAdminHeader = ({ onMenuToggle }) => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <NotificationBell userId={user?._id} />
+                    {user && user._id && <NotificationBell userId={user._id} />}
                     <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             {user?.name ? user.name[0].toUpperCase() : "?"}

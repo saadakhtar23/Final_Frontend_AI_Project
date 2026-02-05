@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Search, Bell, MessageCircle, Menu, ChevronDown } from "lucide-react";
 import axios from "axios";
 import { baseUrl } from "../../utils/ApiConstants";
+import NotificationBell from '../../components/NotificationBell';
 
 const RMGHeader = ({ onMenuToggle }) => {
     const [user, setUser] = useState(null);
@@ -66,13 +67,7 @@ const RMGHeader = ({ onMenuToggle }) => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    {/* <button className="p-2 rounded-full hover:bg-gray-100 relative">
-                        <MessageCircle size={20} className="text-gray-600" />
-                    </button>
-                    <button className="p-2 rounded-full hover:bg-gray-100 relative">
-                        <Bell size={20} className="text-gray-600" />
-                    </button> */}
-
+                    {user && user._id && <NotificationBell userId={user._id} />}
                     <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
                         <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             {user?.name ? user.name[0].toUpperCase() : "?"}

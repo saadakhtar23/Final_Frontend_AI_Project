@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 
 import LandingPage from './components/LandingPage/LandingPage';
+import NotificationPage from './components/NotificationBell.jsx';
 import CompaniesRegister from './SuperAdmin/CompaniesRegister';
 import SuperAdminProfile from './SuperAdmin/SuperAdminProfile';
 import SuperAdminLayout from './SuperAdmin/SuperAdminLayout';
@@ -77,6 +78,8 @@ const App = () => {
     <CompanyProvider>
       <Router>
         <Routes>
+          {/* Notification Page for all roles */}
+          <Route path="/notifications" element={<NotificationPage userId={localStorage.getItem('userId') || localStorage.getItem('adminId') || localStorage.getItem('candidateId') || localStorage.getItem('superAdminId')} />} />
 
           <Route path="/" element={<LandingPage />} />
           <Route path="/ForgotPassword" element={<ForgotPassword />} />
