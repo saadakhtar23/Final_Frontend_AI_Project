@@ -483,38 +483,46 @@ const RecruiterDashboard = () => {
 
                     <div className="overflow-x-auto">
                         <div className="flex min-w-[650px]">
-                            <div className="flex flex-col justify-between h-48 pr-3 text-right">
-                                {[400, 300, 200, 100, 0].map((value, index) => (
-                                    <span key={index} className="text-xs text-gray-400">
-                                        {value}
-                                    </span>
-                                ))}
+                            <div className="flex flex-col justify-between h-48 pr-3 text-right text-xs text-gray-400 font-medium">
+                                <span className="-mt-2">100</span>
+                                <span className="-mt-2">75</span>
+                                <span className="-mt-2">50</span>
+                                <span className="-mt-2">25</span>
+                                <span className="-mb-2">0</span>
                             </div>
 
-                            <div className="flex-1 relative">
-                                <div className="absolute inset-0 flex flex-col justify-between">
-                                    {[0, 1, 2, 3, 4].map((_, index) => (
-                                        <div key={index} className="border-t border-gray-100 w-full"></div>
-                                    ))}
+                            <div className="flex-1 relative h-48">
+                                <div className="absolute inset-0 w-full h-full pointer-events-none">
+                                    <div className="absolute bottom-0 w-full border-b border-gray-100"></div>   {/* 0% Line */}
+                                    <div className="absolute bottom-[25%] w-full border-b border-gray-100"></div> {/* 25% Line */}
+                                    <div className="absolute bottom-[50%] w-full border-b border-gray-100"></div> {/* 50% Line */}
+                                    <div className="absolute bottom-[75%] w-full border-b border-gray-100"></div> {/* 75% Line */}
+                                    <div className="absolute top-0 w-full border-b border-gray-100"></div>        {/* 100% Line */}
                                 </div>
 
-                                <div className="flex items-end justify-between h-48 gap-3 relative z-10">
+                                <div className="flex items-end justify-between h-full relative z-10 px-2">
                                     {(monthlyData.length > 0 ? monthlyData :
                                         ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].map(month => ({ month, assigned: 0, created: 0 }))
                                     ).map((item, i) => {
-                                        const assignedHeight = (item.assigned / 400) * 100;
-                                        const createdHeight = (item.created / 400) * 100;
+
+                                        let assignedHeight = item.assigned;
+                                        let createdHeight = item.created;
+
+                                        if (assignedHeight > 100) assignedHeight = 100;
+                                        if (createdHeight > 100) createdHeight = 100;
+
                                         const isHovered = hoveredBar === i;
 
                                         return (
                                             <div
                                                 key={i}
-                                                className="flex flex-col items-center gap-2 flex-1 h-full relative cursor-pointer"
+                                                className="flex flex-col items-center gap-2 flex-1 h-full relative cursor-pointer group"
                                                 onMouseEnter={() => setHoveredBar(i)}
                                                 onMouseLeave={() => setHoveredBar(null)}
                                             >
+                                                {/* Tooltip */}
                                                 {isHovered && (
-                                                    <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-20">
+                                                    <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-20 shadow-lg whitespace-nowrap">
                                                         <div className="font-semibold mb-1">{item.month} {selectedYear}</div>
                                                         <div>Assigned: {item.assigned}</div>
                                                         <div>Created: {item.created}</div>
@@ -522,21 +530,19 @@ const RecruiterDashboard = () => {
                                                     </div>
                                                 )}
 
-                                                <div
-                                                    className="flex items-end gap-1 flex-1 w-full justify-center"
-                                                    title={`${item.month} ${selectedYear}\nAssigned: ${item.assigned}\nCreated: ${item.created}`}
-                                                >
+                                                <div className="flex items-end gap-1 justify-center w-full h-full pb-[1px]"> {/* pb-1px aligns bar to 0 line visually */}
                                                     <div
-                                                        style={{ height: `${Math.max(assignedHeight, 2)}%` }}
-                                                        className={`w-4 bg-indigo-400 rounded-full transition-all ${isHovered ? 'bg-indigo-500' : ''}`}
+                                                        style={{ height: `${assignedHeight}%` }}
+                                                        className={`w-3 md:w-4 rounded-t-md transition-all duration-300 ${isHovered ? 'bg-indigo-500' : 'bg-indigo-400'}`}
                                                     ></div>
+
                                                     <div
-                                                        style={{ height: `${Math.max(createdHeight, 2)}%` }}
-                                                        className={`w-4 bg-rose-400 rounded-full transition-all ${isHovered ? 'bg-rose-500' : ''}`}
+                                                        style={{ height: `${createdHeight}%` }}
+                                                        className={`w-3 md:w-4 rounded-t-md transition-all duration-300 ${isHovered ? 'bg-rose-500' : 'bg-rose-400'}`}
                                                     ></div>
                                                 </div>
 
-                                                <span className={`text-xs ${isHovered ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                                                <span className={`text-[10px] sm:text-xs absolute -bottom-6 ${isHovered ? 'text-gray-800 font-bold' : 'text-gray-400'}`}>
                                                     {item.month}
                                                 </span>
                                             </div>

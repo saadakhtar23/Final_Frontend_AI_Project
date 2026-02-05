@@ -10,43 +10,42 @@ const CandidateHeader = ({ onMenuToggle }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
-        // Close dropdown on outside click
-        useEffect(() => {
-            function handleClickOutside(event) {
-                if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                    setDropdownOpen(false);
-                }
-            }
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
-        }, []);
-        const handleLogout = () => {
-            localStorage.removeItem('candidateToken');
-            localStorage.removeItem('candidate');
-            navigate('/Candidatelogin');
-        };
 
-        const handleProfile = () => {
-            setDropdownOpen(false);
-            navigate('/Candidate-Dashboard/CandidateProfile');
-        };
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem('candidateToken');
+        localStorage.removeItem('candidate');
+        navigate('/Candidatelogin');
+    };
+
+    const handleProfile = () => {
+        setDropdownOpen(false);
+        navigate('/Candidate-Dashboard/CandidateProfile');
+    };
+
     const [dateTime, setDateTime] = useState("");
 
     const formatDateTime = () => {
         const now = new Date();
-
         const date = now.toLocaleDateString("en-GB", {
             day: "2-digit",
             month: "long",
             year: "numeric",
         });
-
         const time = now.toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
             hour12: true,
         });
-
         return `${date} | ${time}`;
     };
 
@@ -59,14 +58,11 @@ const CandidateHeader = ({ onMenuToggle }) => {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                console.log("Checking problem:", res.data);
-                
                 setUser(res.data.data);
             } catch (err) {
                 console.error("Error fetching user:", err);
             }
         };
-
         fetchUser();
         setDateTime(formatDateTime());
     }, []);
@@ -93,65 +89,44 @@ const CandidateHeader = ({ onMenuToggle }) => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    {/* <button className="p-2 rounded-full hover:bg-gray-100 relative">
-                        <MessageCircle size={20} className="text-gray-600" />
-                    </button>
-                    <button className="p-2 rounded-full hover:bg-gray-100 relative">
-                        <Bell size={20} className="text-gray-600" />
-                    </button> */}
+                    {user && user._id && <NotificationBell userId={user._id} />}
 
-                    <div className="flex items-center">
-                        <div
-                            className="relative border border-gray-800 rounded-lg p-2 flex items-center justify-between space-x-3 min-w-[180px]"
-                            ref={dropdownRef}
-                        >
-                            <div
-                                className="flex-1 min-w-0 cursor-pointer"
-                                onClick={() => setDropdownOpen((prev) => !prev)}
-                            >
-                                <div className="flex items-center gap-1">
-                                    <span className="text-sm font-medium text-gray-800 truncate">
-                                        {user?.name || "Loading..."}
-                                    </span>
-                                    <ChevronDown size={16} className="text-gray-500" />
-                                </div>
-                                <div className="text-xs text-gray-500">candidate</div>
-                            </div>
-
-                            <div className="flex items-center space-x-4">
-                                {user && user._id && <NotificationBell userId={user._id} />}
-                                <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
-                                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                        {user?.name ? user.name[0].toUpperCase() : "?"}
-                                    </div>
-                                    <div className="hidden sm:block">
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {user?.name || "Loading..."}
-                                        </p>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {user?.role || "Role..."}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {dropdownOpen && (
-                                <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                    <button
-                                        onClick={handleProfile}
-                                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 rounded-t-lg"
-                                    >
-                                        Profile
-                                    </button>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 rounded-b-lg"
-                                    >
-                                        Logout
-                                    </button>
-                                </div>
-                            )}
+                    <div
+                        className="relative border border-gray-200 rounded-lg p-2 flex items-center space-x-3 min-w-[150px] cursor-pointer hover:bg-gray-50"
+                        ref={dropdownRef}
+                        onClick={() => setDropdownOpen((prev) => !prev)}
+                    >
+                        <div className="w-9 h-9 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                            {user?.name ? user.name[0].toUpperCase() : "?"}
                         </div>
+
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm font-medium text-gray-800 truncate">
+                                    {user?.name || "Loading..."}
+                                </span>
+                            </div>
+                            <div className="text-xs text-gray-500">{user?.role || "Candidate"}</div>
+                        </div>
+
+                        <ChevronDown size={16} className="text-gray-500" />
+
+                        {dropdownOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                <button
+                                    onClick={handleProfile}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 rounded-t-lg"
+                                >
+                                    Profile
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 rounded-b-lg"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

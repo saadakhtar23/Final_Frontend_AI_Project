@@ -178,7 +178,10 @@ function JDDetails() {
 
                 setCurrentPageTable2(1);
 
-                alert('Resumes filtered successfully!');
+                const userConfirmed = window.confirm('Comeback to check filtered candidates');
+                if (userConfirmed) {
+                    navigate(-1);
+                }
             } else {
                 alert('Filtering failed. Please try again.');
             }
