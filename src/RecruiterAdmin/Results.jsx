@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Eye, Trash2 } from 'lucide-react';
+import { Search, Eye, Trash2, X } from 'lucide-react';
 import Pagination from '../components/LandingPage/Pagination';
 import ViewResults from './ViewResults';
 import SpinLoader from '../components/SpinLoader';
@@ -552,12 +552,15 @@ function Results() {
 
 
       {showViewResults && selectedJob && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center justify-between p-4 border-b relative">
               <h3 className="text-lg font-semibold">Test: {selectedJob.jobTitle}</h3>
-              <div>
+              <div className="flex items-center gap-2">
                 <button onClick={closeModal} className="px-3 py-1 bg-gray-100 rounded">Close</button>
+                <button onClick={closeModal} aria-label="Close" className="p-2 rounded bg-transparent hover:bg-gray-100">
+                  <X size={16} />
+                </button>
               </div>
             </div>
 

@@ -47,8 +47,9 @@ function JDDetails() {
                 console.log('Candidate applied JDs Data:', response.data);
 
                 if (response.data.success) {
+                    // Include new 'applied' status (set by backend) and legacy 'pending'
                     const pending = response.data.data.filter(
-                        (candidate) => candidate.status === 'pending'
+                        (candidate) => candidate.status === 'pending' || candidate.status === 'applied'
                     );
                     setPendingCandidates(pending);
                 }
