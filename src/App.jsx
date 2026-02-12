@@ -71,6 +71,8 @@ import { CompanyProvider } from './Context/companyContext';
 import CandidateRegister from './Candidate/CandidateRegister';
 import CandidateForgotPassword from './components/CandidateForgotPassword';
 import RecruiterProfile from './RecruiterAdmin/RecruiterProfile';
+import JDDetail from './components/JDDetail.jsx';
+import ApplyToJob from './Candidate/Pages/ApplyToJob.jsx';
 
 const App = () => {
   return (
@@ -90,6 +92,7 @@ const App = () => {
           <Route path="/Candidate-Chatbot" element={<Chatbot />} />
           <Route path="/Login" element={<UniversalLogin />} />
           <Route path="/SuperAdminRegister" element={<SuperAdminRegister />} />
+          <Route path="/JDDetail/:id" element={<JDDetail />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/Admin-Dashboard" element={<AdminLayout />}>
@@ -120,6 +123,7 @@ const App = () => {
             <Route path="/Candidate-Dashboard" element={<CandidateLayout />}>
               <Route index element={<CandidateDashboard />} />
               <Route path="AllJDs" element={<AllJDs />} />
+              <Route path="AllJDs/ApplyToJob/:jobId" element={<ApplyToJob />} />
               <Route path="Report" element={<Report />} />
               <Route path="AppliedJD" element={<AppliedJD />} />
               <Route path="Examination" element={<Examination />} />
