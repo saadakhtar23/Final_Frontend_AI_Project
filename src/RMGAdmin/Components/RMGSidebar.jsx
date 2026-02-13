@@ -32,8 +32,31 @@ const RMGSidebar = ({ isOpen, onToggle }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('candidateToken');
+    localStorage.removeItem('token');
     navigate('/Login');
+  };
+
+  const NavItem = ({ name, path, icon: Icon, label }) => {
+    const isActive = activeNav === name;
+
+    return (
+      <li>
+        <button
+          onClick={() => handleNavClick(name, path)}
+          className={`
+            relative flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium
+            ${isActive ? 'bg-white text-[#8b21de] shadow-sm' : 'text-white hover:bg-white/20'}
+          `}
+        >
+          {isActive && (
+            <div className="absolute left-[-16px] top-0 h-full w-1 bg-white rounded-r-md" />
+          )}
+
+          <Icon size={20} />
+          <span>{label}</span>
+        </button>
+      </li>
+    );
   };
 
   return (
@@ -47,86 +70,62 @@ const RMGSidebar = ({ isOpen, onToggle }) => {
 
       <div
         className={`
-          fixed left-0 top-0 h-screen bg-gray-900 text-white z-50
+          fixed left-0 top-0 h-screen bg-gradient-to-b from-[#9A31BD] to-[#250B52] text-white z-50
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 w-64 flex flex-col
+          lg:translate-x-0 w-64 flex flex-col shadow-xl
         `}
       >
-        <div className="flex items-center justify-between py-6 px-7 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Recruter AI</h1>
+        <div className="flex items-center justify-between pb-8 py-4 px-6">
+          <div className='w-full text-center'>
+            <h1 className="text-3xl font-bold tracking-wide">AIRecruit</h1>
+          </div>
           <button
             onClick={onToggle}
-            className="p-1 rounded hover:bg-gray-700 lg:hidden"
+            className="p-1 rounded hover:bg-white/20 lg:hidden"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="py-4 flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto px-4">
           <ul className="space-y-2">
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RMGDashboard', '/RMGAdmin-Dashboard')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RMGDashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Home size={20} />
-                <span>Dashboard</span>
-              </button>
-            </li>
+            <NavItem 
+              name="RMGDashboard" 
+              path="/RMGAdmin-Dashboard" 
+              icon={Home} 
+              label="Dashboard" 
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RequirementForm', '/RMGAdmin-Dashboard/RequirementForm')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RequirementForm' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>Requisition Form</span>
-              </button>
-            </li>
+            <NavItem 
+              name="RequirementForm" 
+              path="/RMGAdmin-Dashboard/RequirementForm" 
+              icon={UserPlus} 
+              label="Requisition Form" 
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('AssignedRecruiters', '/RMGAdmin-Dashboard/AssignedRecruiters')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'AssignedRecruiters' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>Assigned Recruiters</span>
-              </button>
-            </li>
+            <NavItem 
+              name="AssignedRecruiters" 
+              path="/RMGAdmin-Dashboard/AssignedRecruiters" 
+              icon={UserPlus} 
+              label="Assigned Recruiters" 
+            />
 
+            <NavItem 
+              name="RaiseTickets" 
+              path="/RMGAdmin-Dashboard/RMGRaiseTickets" 
+              icon={Building2} 
+              label="Raise Tickets" 
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RaiseTickets', '/RMGAdmin-Dashboard/RMGRaiseTickets')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RaiseTickets' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Raise Tickets</span>
-              </button>
-            </li>
-
-            {/* <li>
-              <button
-                onClick={() => handleNavClick('SupportTickets', '/RMGAdmin-Dashboard/RMGSupportTickets')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'SupportTickets' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Support Tickets</span>
-              </button>
-            </li> */}
+            {/* Commented logic kept as placeholder if needed */}
+            {/* <NavItem name="SupportTickets" ... /> */}
 
             <li>
               <button
                 onClick={handleLogout}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Logout' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+                className="flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium text-white hover:bg-white/20"
               >
                 <LogOut size={20} />
                 <span>Logout</span>

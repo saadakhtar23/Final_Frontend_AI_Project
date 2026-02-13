@@ -36,6 +36,29 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
     navigate('/Login');
   };
 
+  
+  const NavItem = ({ name, path, icon: Icon, label }) => {
+    const isActive = activeNav === name;
+
+    return (
+      <li>
+        <button
+          onClick={() => handleNavClick(name, path)}
+          className={`
+            relative flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium
+            ${isActive ? 'bg-white text-[#8b21de] shadow-sm' : 'text-white hover:bg-white/20'}
+          `}
+        >
+          {isActive && (
+            <div className="absolute left-[-16px] top-0 h-full w-1 bg-white rounded-r-md" />
+          )}
+
+          <Icon size={20} />
+          <span>{label}</span>
+        </button>
+      </li>
+    );
+  };
 
   return (
     <>
@@ -48,85 +71,60 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
 
       <div
         className={`
-          fixed left-0 top-0 h-screen bg-gray-900 text-white z-50
+          fixed left-0 top-0 h-screen bg-gradient-to-b from-[#9A31BD] to-[#250B52] text-white z-50
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 w-64 flex flex-col
+          lg:translate-x-0 w-64 flex flex-col shadow-xl
         `}
       >
-        <div className="flex items-center justify-between py-6 px-7 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Recruter AI</h1>
+        <div className="flex items-center justify-between pb-8 py-4 px-6">
+          <div className='w-full text-center'>
+            <h1 className="text-3xl font-bold tracking-wide">AIRecruit</h1>
+          </div>
           <button
             onClick={onToggle}
-            className="p-1 rounded hover:bg-gray-700 lg:hidden"
+            className="p-1 rounded hover:bg-white/20 lg:hidden"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="py-4 flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto px-4">
           <ul className="space-y-2">
 
-            <li>
-              <button
-                onClick={() => handleNavClick('Admin-Dashboard', '/Admin-Dashboard')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Admin-Dashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Home size={20} />
-                <span>Dashboard</span>
-              </button>
-            </li>
+            <NavItem
+              name="Admin-Dashboard"
+              path="/Admin-Dashboard"
+              icon={Home}
+              label="Dashboard"
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RecruiterManagement', '/Admin-Dashboard/RecruiterManagement')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RecruiterManagement' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>HR Administration</span>
-              </button>
-            </li>
+            <NavItem
+              name="RecruiterManagement"
+              path="/Admin-Dashboard/RecruiterManagement"
+              icon={UserPlus}
+              label="HR Administration"
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RMGManagement', '/Admin-Dashboard/RMGManagement')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RMGManagement' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>RMG Administration</span>
-              </button>
-            </li>
+            <NavItem
+              name="RMGManagement"
+              path="/Admin-Dashboard/RMGManagement"
+              icon={UserPlus}
+              label="RMG Administration"
+            />
 
-            <li>
-              <button
-                onClick={() => handleNavClick('RaiseTickets', '/Admin-Dashboard/Tickets')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'RaiseTickets' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Raise Tickets</span>
-              </button>
-            </li>
+            <NavItem
+              name="RaiseTickets"
+              path="/Admin-Dashboard/Tickets"
+              icon={Building2}
+              label="Raise Tickets"
+            />
 
-            {/* <li>
-              <button
-                onClick={() => handleNavClick('CreateTickets', '/Admin-Dashboard/RaiseTickets')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'CreateTickets' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Create Tickets</span>
-              </button>
-            </li> */}
 
             <li>
               <button
                 onClick={handleLogout}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Logout' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+                className={`flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium text-white hover:bg-white/20`}
               >
                 <LogOut size={20} />
                 <span>Logout</span>

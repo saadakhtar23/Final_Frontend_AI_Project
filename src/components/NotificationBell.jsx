@@ -21,7 +21,7 @@ export default function NotificationBell({ userId }) {
           },
         });
         setNotifications(res.data);
-      } catch (err) {}
+      } catch (err) { }
     };
     fetchNotifications();
   }, [userId]);
@@ -68,22 +68,26 @@ export default function NotificationBell({ userId }) {
           </span>
         )}
       </button>
-      
+
       {showDropdown && createPortal(
-        <div 
+        <div
           className="fixed w-80 bg-white border border-gray-200 rounded-xl shadow-2xl animate-fade-in"
-          style={{ 
-            top: buttonPosition.top, 
+          style={{
+            top: buttonPosition.top,
             right: buttonPosition.right,
-            zIndex: 99999 
+            zIndex: 99999
           }}
         >
-          <div className="p-4 border-b font-semibold text-[#6D28D9] flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            Notifications
+          <div className='flex justify-between items-center'>
+            <div className="p-4 font-semibold text-[#6D28D9] flex items-center gap-2">
+              <svg className="w-5 h-5 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              Notifications
+            </div>
+            <span className="p-4 text-sm font-semibold text-[#6D28D9] cursor-pointer">Marked All</span>
           </div>
+
           <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100">
             {notifications.length === 0 ? (
               <li className="p-6 text-gray-400 text-center">No notifications yet.</li>

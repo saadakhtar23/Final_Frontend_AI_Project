@@ -39,6 +39,28 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
     navigate('/');
   };
 
+  const NavItem = ({ name, path, icon: Icon, label }) => {
+    const isActive = activeNav === name;
+
+    return (
+      <li>
+        <button
+          onClick={() => handleNavClick(name, path)}
+          className={`
+            relative flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium
+            ${isActive ? 'bg-white text-[#8b21de] shadow-sm' : 'text-white hover:bg-white/20'}
+          `}
+        >
+          {isActive && (
+            <div className="absolute left-[-16px] top-0 h-full w-1 bg-white rounded-r-md" />
+          )}
+
+          <Icon size={20} />
+          <span>{label}</span>
+        </button>
+      </li>
+    );
+  };
 
   return (
     <>
@@ -51,90 +73,71 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
 
       <div
         className={`
-          fixed left-0 top-0 h-screen bg-gray-900 text-white z-50
+          fixed left-0 top-0 h-screen bg-gradient-to-b from-[#9A31BD] to-[#250B52] text-white z-50
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 w-64 flex flex-col
+          lg:translate-x-0 w-64 flex flex-col shadow-xl
         `}
       >
-        <div className="flex items-center justify-between py-6 px-7 border-b border-gray-700">
-          <h1 className="text-xl font-bold">Recruter AI</h1>
+        <div className="flex items-center justify-between pb-8 py-4 px-6">
+          <div className='w-full text-center'>
+            <h1 className="text-3xl font-bold tracking-wide">AIRecruit</h1>
+          </div>
           <button
             onClick={onToggle}
-            className="p-1 rounded hover:bg-gray-700 lg:hidden"
+            className="p-1 rounded hover:bg-white/20 lg:hidden"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="py-4 flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto px-4">
           <ul className="space-y-2">
 
-            <li>
-              <button
-                onClick={() => handleNavClick('CandidateDashboard', '/Candidate-Dashboard')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'CandidateDashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Home size={20} />
-                <span>Dashboard</span>
-              </button>
-            </li>
+            <NavItem 
+              name="CandidateDashboard" 
+              path="/Candidate-Dashboard" 
+              icon={Home} 
+              label="Dashboard" 
+            />
             
-            <li>
-              <button
-                onClick={() => handleNavClick('AllJds', '/Candidate-Dashboard/AllJds')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'AllJds' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Open Positions</span>
-              </button>
-            </li>
+            <NavItem 
+              name="AllJds" 
+              path="/Candidate-Dashboard/AllJds" 
+              icon={Building2} 
+              label="Open Positions" 
+            />
+
+            <NavItem 
+              name="AppliedJD" 
+              path="/Candidate-Dashboard/AppliedJD" 
+              icon={Building2} 
+              label="Applied Jobs" 
+            />
+
+            <NavItem 
+              name="Examination" 
+              path="/Candidate-Dashboard/Examination" 
+              icon={UserPlus} 
+              label="Online Assessment" 
+            />
+
+            <NavItem 
+              name="Reports" 
+              path="/Candidate-Dashboard/Report" 
+              icon={UserPlus} 
+              label="Evalution Summary" 
+            />
 
             <li>
-              <button
-                onClick={() => handleNavClick('AppliedJD', '/Candidate-Dashboard/AppliedJD')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'AppliedJD' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <Building2 size={20} />
-                <span>Applied Jobs</span>
-              </button>
-            </li>
-
-            <li>
-              <button
-                onClick={() => handleNavClick('Examination', '/Candidate-Dashboard/Examination')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Examination' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>Online Assessment</span>
-              </button>
-            </li>
-
-            <li>
-              <button
-                onClick={() => handleNavClick('Reports', '/Candidate-Dashboard/Report')}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Reports' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <UserPlus size={20} />
-                <span>Evalution Summary</span>
-              </button>
-            </li>
-
-            {/* <li>
               <button
                 onClick={handleLogout}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors hover:bg-white hover:text-black text-left`}
+                className={`flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium text-white hover:bg-white/20`}
               >
                 <LogOut size={20} />
                 <span>Logout</span>
               </button>
-            </li> */}
-
+            </li>
 
           </ul>
         </nav>
