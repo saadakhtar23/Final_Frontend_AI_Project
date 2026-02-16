@@ -352,20 +352,37 @@ const WebCamRecorder = forwardRef(
       }
     };
  
+
     // ---------------------------------------------------------
     // Stop Recording
     // ---------------------------------------------------------
     const pushAnswerForIndex = (idx, ans) => {
+      let answerText = '';
+      if (typeof ans === 'string') {
+        answerText = ans;
+      } else if (ans && ans.target && typeof ans.target.value === 'string') {
+        answerText = ans.target.value;
+        console.warn('[WebCamRecorder] pushAnswerForIndex received event object instead of string!', ans);
+      } else {
+        console.warn('[WebCamRecorder] pushAnswerForIndex received non-string, non-event:', ans);
+      }
       const item = {
         question_id: questions[idx]?.question_id || questions[idx]?.id,
         question: (questions[idx]?.prompt_text || questions[idx]?.question) || '',
-        answer: ans ? ans.trim() : '',
+        answer: answerText.trim(),
       };
-      // ensure array size and set at index
       qaListRef.current = qaListRef.current || [];
       qaListRef.current[idx] = item;
-      console.log(`WebCamRecorder: pushAnswerForIndex idx=${idx} answer='${item.answer}' item=`, item);
+      console.log(`[WebCamRecorder] pushAnswerForIndex idx=${idx} answer='${item.answer}' item=`, item);
     };
+
+    // Always keep qaListRef in sync with the text area
+    useEffect(() => {
+      pushAnswerForIndex(currentIndex, currentAnswer);
+      // Debug: log current answer and qaListRef
+      console.log('[WebCamRecorder] Textarea changed:', { currentIndex, currentAnswer, qaList: JSON.parse(JSON.stringify(qaListRef.current)) });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentAnswer, currentIndex]);
 
     const endInterview = async () => {
       try {
@@ -462,6 +479,8 @@ const WebCamRecorder = forwardRef(
         answer: item?.answer || '',
       }));
 
+      // Debug: log before upload
+      console.log('[WebCamRecorder] Uploading video with:', { qaList: JSON.parse(JSON.stringify(qaListRef.current)), qa_data, currentIndex, currentAnswer });
       console.log('WebCamRecorder: uploading video with qa_data=', qa_data, 'chunksCount=', chunksRef.current.length);
 
       const fd = new FormData();
@@ -548,8 +567,14 @@ const WebCamRecorder = forwardRef(
  
         {/* Text Answer */}
 <textarea
-          value={currentAnswer}
-          onChange={(e) => setCurrentAnswer(e.target.value)}
+          value={typeof currentAnswer === 'string' ? currentAnswer : ''}
+          onChange={e => {
+            if (typeof e.target.value === 'string') {
+              setCurrentAnswer(e.target.value);
+            } else {
+              console.warn('[WebCamRecorder] textarea onChange non-string value:', e);
+            }
+          }}
           className="w-full p-3 border rounded mt-4 min-h-[120px]"
           placeholder="Write your explanation / answer here..."
         />
@@ -569,7 +594,7 @@ const WebCamRecorder = forwardRef(
             <>
               <button
                 onClick={async () => {
-                  // save current answer for this index
+                  // Always save the current answer for this index
                   pushAnswerForIndex(currentIndex, currentAnswer);
                   // clear answer and move to next
                   setCurrentAnswer('');
@@ -578,22 +603,19 @@ const WebCamRecorder = forwardRef(
                     setCurrentIndex(next);
                     setTimeout(() => setStatus('Recording...'), 200);
                   } else {
-                    // last question -> stop recording
+                    // last question -> stop recording automatically
                     await stopRecordingWait();
                     setInterviewEnded(true);
                     setStatus('Recording stopped');
+                  }
+                  // --- PATCH: Save all video answers to parent state on every next click ---
+                  if (typeof window !== 'undefined' && window.__saveVideoAnswersToParent) {
+                    window.__saveVideoAnswersToParent(qaListRef.current);
                   }
                 }}
                 className="px-4 py-2 bg-amber-600 text-white rounded"
               >
                 Next
-              </button>
-
-              <button
-                onClick={endInterview}
-                className="px-4 py-2 bg-red-600 text-white rounded"
-              >
-                Stop Recording
               </button>
             </>
           )}
@@ -629,6 +651,18 @@ const WebCamRecorder = forwardRef(
     );
   }
 );
+// --- PATCH: Helper to sync video answers from recorder to allAnswers ---
+function syncVideoAnswersToAllAnswers(qaList, setAllAnswers) {
+  if (!Array.isArray(qaList)) return;
+  setAllAnswers(prev => {
+    const next = { ...prev };
+    qaList.forEach(item => {
+      if (item && item.question_id) next[item.question_id] = item.answer || '';
+    });
+    return next;
+  });
+}
+
 const GiveTest = ({ jdId }) => {
   const { questionSetId } = useParams();
   const location = useLocation();
@@ -665,6 +699,19 @@ const GiveTest = ({ jdId }) => {
   const [tabSwitches, setTabSwitches] = useState(0);
   const faceEventRef = useRef(null);
   const webcamInterviewRef = useRef(null);
+  // --- PATCH: Expose a global sync function for video answers ---
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__saveVideoAnswersToParent = (qaList) => {
+        syncVideoAnswersToAllAnswers(qaList, setAllAnswers);
+      };
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.__saveVideoAnswersToParent = undefined;
+      }
+    };
+  }, []);
   const webcamPreviewRef = useRef(null);
   const saveViolationsSentRef = useRef(false);
   const [showWebcamInterview, setShowWebcamInterview] = useState(false);
@@ -1564,16 +1611,22 @@ const GiveTest = ({ jdId }) => {
     // Accept additional keys: multiple_faces, single_face
     if (submitted) return;
 
+    // Helper: show alert for MCQ, coding, and video sections
+    const showSectionAlert = (msg) => {
+      const sectionType = currentSection?.type;
+      if (["mcq", "coding", "video"].includes(sectionType)) {
+        window.alert(msg);
+      }
+    };
+
     if (key === 'multiple_faces') {
-      // visually blur the page while multiple faces are present
       setShowMultipleFaces(true);
-      // Ensure only a single alert is shown: dismiss any existing toasts,
-      // then show one and mark it as shown until cleared by single_face.
       try { toast.dismiss(); } catch (e) {}
       if (!shownToastsRef.current.has('multiple_faces')) {
-        toast.warning('🚨 Multiple faces detected — page blurred');
+        const msg = '🚨 Multiple faces detected — page blurred';
+        toast.warning(msg);
+        showSectionAlert(msg);
         shownToastsRef.current.add('multiple_faces');
-        // also mark face_not_visible to avoid duplicate face alerts
         shownToastsRef.current.add('face_not_visible');
       }
       try {
@@ -1592,7 +1645,6 @@ const GiveTest = ({ jdId }) => {
 
     if (key === 'single_face') {
       setShowMultipleFaces(false);
-      // clear the multiple_faces shown marker so future multi-face events can alert again
       try { shownToastsRef.current.delete('multiple_faces'); } catch (e) {}
       try { toast.dismiss(); } catch (e) {}
       return;
@@ -1600,11 +1652,13 @@ const GiveTest = ({ jdId }) => {
 
     if (!['tab_switches', 'inactivities', 'face_not_visible'].includes(key)) return;
 
-    // If user switches tab, briefly blur the page and show a single alert (like multiple_faces)
     if (key === 'tab_switches') {
       try { toast.dismiss(); } catch (e) {}
+      const msg = '⚠️ Tab switch detected — page blurred';
+      // Always show alert for tab switch, even on first occurrence
+      showSectionAlert(msg);
       if (!shownToastsRef.current.has('tab_switches')) {
-        toast.warning('⚠️ Tab switch detected — page blurred');
+        toast.warning(msg);
         shownToastsRef.current.add('tab_switches');
       }
       setShowTabSwitch(true);
@@ -1616,17 +1670,20 @@ const GiveTest = ({ jdId }) => {
         ? { ...prev, [key]: count }
         : { ...prev, [key]: (prev[key] || 0) + count };
 
-      // show toasts based on violation type
       if (!submitted) {
         if (!shownToastsRef.current.has(key)) {
-          if (key === 'tab_switches') toast.warning('⚠️ Tab switch detected!');
-          if (key === 'inactivities') toast.info('⌛ You have been inactive.');
-          if (key === 'face_not_visible') toast.error('🚨 Face not visible!');
+          let msg = '';
+          if (key === 'tab_switches') msg = '⚠️ Tab switch detected!';
+          if (key === 'inactivities') msg = '⌛ You have been inactive.';
+          if (key === 'face_not_visible') msg = '🚨 Face not visible!';
+          if (msg) {
+            toast[key === 'face_not_visible' ? 'error' : (key === 'inactivities' ? 'info' : 'warning')](msg);
+            showSectionAlert(msg);
+          }
           shownToastsRef.current.add(key);
         }
       }
 
-      // emit to socket (best-effort)
       try {
         emitViolation({
           exam_id: jdId,
@@ -1883,7 +1940,7 @@ const GiveTest = ({ jdId }) => {
             questions={currentSection?.questions || []}
             candidateId={finalCandidateId}
             questionSetId={questionSetId}
-            baseUrl={window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com'}
+            baseUrl={window.REACT_APP_BASE_URL || {pythonUrl}}
             onClose={() => setShowAudioInterview(false)}
             onComplete={(qa) => {
               setAudioInterviewResults(qa);

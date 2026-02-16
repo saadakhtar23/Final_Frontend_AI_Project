@@ -518,17 +518,10 @@ export default function AudioInterview({
 
           <div className="flex gap-3 mt-3">
             <button
-              className={`px-4 py-2 rounded text-white ${isRecordingAudio ? 'bg-red-600' : 'bg-gray-400'}`}
-              disabled
-            >
-              {isRecordingAudio ? 'Recording...' : 'Recording...'}
-            </button>
-
-            <button
               className={`px-4 py-2 rounded text-white ${isListening ? 'bg-red-600' : 'bg-indigo-600'}`}
               onClick={() => (isListening ? stopSpeechRecognition() : startSpeechRecognition())}
             >
-              {isListening ? 'Stop STT' : 'Voice Input (STT)'}
+              {isListening ? 'Stop Voice Input' : 'Start Voice Input'}
             </button>
 
             <button
