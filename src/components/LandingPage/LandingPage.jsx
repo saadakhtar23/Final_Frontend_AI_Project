@@ -17,6 +17,7 @@ import Twitter from "../../img/Twitter.png";
 import { useNavigate } from "react-router-dom";
 
 export default function LandingPage() {
+  const [loginDropdown, setLoginDropdown] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [formData, setFormData] = useState({
@@ -199,19 +200,51 @@ export default function LandingPage() {
           </div>
 
           <nav className="hidden items-center gap-10 text-[15px] font-medium text-slate-700 md:flex">
-            <a href="#home" onClick={(e) => scrollToSection(e, 'home')} className="hover:text-black cursor-pointer">Home</a>
-            <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-black cursor-pointer">Features</a>
-            <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-black cursor-pointer">How It Works</a>
-            <a href="#contact" onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-black cursor-pointer">Contact</a>
+            <button onClick={(e) => scrollToSection(e, 'home')} className="hover:text-black cursor-pointer">Home</button>
+            <button onClick={(e) => scrollToSection(e, 'features')} className="hover:text-black cursor-pointer">Features</button>
+            <button onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-black cursor-pointer">How It Works</button>
+            <button onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-black cursor-pointer">Contact</button>
           </nav>
 
           <div className="hidden items-center gap-4 md:flex">
-            <button className="rounded-xl border border-[#9931BC] px-6 py-2 text-sm font-medium text-[#9931BC] transition hover:bg-[#F3E8FF]"
-              onClick={() => navigate("/login")}
-            >
-              LogIn
-            </button>
-            <button className="rounded-xl bg-gradient-to-r from-[#9931BC] to-[#4F1878] px-6 py-2 text-sm font-medium text-white shadow-md"
+            <div className="relative">
+              <button
+                className="rounded-xl border border-[#9931BC] px-6 py-2 text-sm font-medium text-[#9931BC] transition hover:bg-[#F3E8FF]"
+                onClick={() => setLoginDropdown((v) => !v)}
+                onBlur={() => setTimeout(() => setLoginDropdown(false), 150)}
+              >
+                LogIn
+              </button>
+
+              {loginDropdown && (
+                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white py-2 shadow-lg z-50">
+                  <button
+                    className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setLoginDropdown(false); navigate("/login", { state: { role: "Admin" } }); }}
+                  >
+                    Admin
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setLoginDropdown(false); navigate("/login", { state: { role: "RMG" } }); }}
+                  >
+                    RMG
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setLoginDropdown(false); navigate("/login", { state: { role: "Recruiter" } }); }}
+                  >
+                    Recruiter
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              className="rounded-xl bg-gradient-to-r from-[#9931BC] to-[#4F1878] px-6 py-2 text-sm font-medium text-white shadow-md"
               onClick={() => navigate("/CandidateLogin")}
             >
               LogIn as Candidate
@@ -245,17 +278,43 @@ export default function LandingPage() {
         {mobileMenu && (
           <div className="border-t border-slate-200 bg-white px-4 pb-6 md:hidden">
             <div className="flex flex-col gap-4 pt-4 text-[15px] font-medium text-slate-700">
-              <a href="#home" onClick={(e) => { scrollToSection(e, 'home'); setMobileMenu(false); }}>Home</a>
-              <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setMobileMenu(false); }}>Features</a>
-              <a href="#how-it-works" onClick={(e) => { scrollToSection(e, 'how-it-works'); setMobileMenu(false); }}>How It Works</a>
-              <a href="#contact" onClick={(e) => { scrollToSection(e, 'contact'); setMobileMenu(false); }}>Contact</a>
+              <button onClick={(e) => { scrollToSection(e, 'home'); setMobileMenu(false); }}>Home</button>
+              <button onClick={(e) => { scrollToSection(e, 'features'); setMobileMenu(false); }}>Features</button>
+              <button onClick={(e) => { scrollToSection(e, 'how-it-works'); setMobileMenu(false); }}>How It Works</button>
+              <button onClick={(e) => { scrollToSection(e, 'contact'); setMobileMenu(false); }}>Contact</button>
 
               <div className="mt-4 flex flex-col gap-3">
-                <button className="rounded-xl border border-[#9931BC] py-2 text-sm font-medium text-[#9931BC]"
-                  onClick={() => navigate("/login")}
-                >
-                  LogIn
-                </button>
+                <div className="relative">
+                  <button
+                    className="w-full rounded-xl border border-[#9931BC] py-2 text-sm font-medium text-[#9931BC]"
+                    onClick={() => setLoginDropdown((v) => !v)}
+                  >
+                    LogIn
+                  </button>
+
+                  {loginDropdown && (
+                    <div className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2 shadow-lg">
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                        onClick={() => { setLoginDropdown(false); setMobileMenu(false); navigate("/login", { state: { role: "Admin" } }); }}
+                      >
+                        Admin
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                        onClick={() => { setLoginDropdown(false); setMobileMenu(false); navigate("/login", { state: { role: "RMG" } }); }}
+                      >
+                        RMG
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 hover:bg-[#F3E8FF] hover:text-[#9931BC]"
+                        onClick={() => { setLoginDropdown(false); setMobileMenu(false); navigate("/login", { state: { role: "Recruiter" } }); }}
+                      >
+                        Recruiter
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button className="rounded-xl bg-gradient-to-r from-[#9931BC] to-[#4F1878] py-2 text-sm font-medium text-white"
                   onClick={() => navigate("/CandidateLogin")}
                 >
@@ -267,10 +326,10 @@ export default function LandingPage() {
         )}
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-14">
+      <div className="mx-auto max-w-7xl px-4 pt-10 md:pt-14">
 
         <section id="home" className="mb-14 md:mb-16">
-          <div className="relative overflow-hidden rounded-[28px] bg-[#FBF7FF] px-6 pt-12 md:px-12 md:pt-16">
+          <div className="relative overflow-hidden rounded-[28px] bg-[#FBF7FF] px-4 pt-12 md:px-12 md:pt-16">
 
             <div className="pointer-events-none absolute inset-0">
               <span className="absolute left-8 top-10 text-[#BF00FF]/20">
@@ -532,21 +591,23 @@ export default function LandingPage() {
               return (
                 <div
                   key={item.q}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.02)]"
+                  className={`rounded-2xl border border-slate-200 shadow-[0_1px_0_rgba(15,23,42,0.02)] transition-colors duration-300 ${isOpen ? "bg-[#F8F8F8]" : "bg-white"
+                    }`}
                 >
                   <button
                     type="button"
                     aria-expanded={isOpen}
-                    onClick={() =>
-                      setOpenFaq((v) => (v === idx ? null : idx))
-                    }
+                    onClick={() => setOpenFaq((v) => (v === idx ? null : idx))}
                     className="flex w-full items-center justify-between gap-4 px-6 py-6 text-left"
                   >
                     <span className="text-[10px] font-semibold md:text-[15px]">
                       {item.q}
                     </span>
 
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-full ${isOpen ? "bg-[#F8F8F8]" : "bg-white"
+                        }`}
+                    >
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -571,7 +632,7 @@ export default function LandingPage() {
                       }`}
                   >
                     <div className="min-h-0">
-                      <p className="text-sm leading-6">
+                      <p className="text-sm leading-6 rounded-lg">
                         {item.a}
                       </p>
                     </div>
@@ -712,10 +773,10 @@ export default function LandingPage() {
               <div className="text-lg font-semibold">Quick Link</div>
               <ul className="mt-4 space-y-2 text-sm text-white/85">
                 <li>
-                  <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white">Features</a>
+                  <button onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white">Features</button>
                 </li>
                 <li>
-                  <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-white">How It Works</a>
+                  <button onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-white">How It Works</button>
                 </li>
               </ul>
             </div>
