@@ -1,81 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import useSocket from '../../utils/useSocket';
-import { Link, useNavigate } from 'react-router-dom';
-import { superAdminBaseUrl } from '../../utils/ApiConstants';
-import Logo from '../../img/Logo.png';
-import {
-  BrainCircuit,
-  Search,
-  Handshake,
-  Calendar,
-  BarChart3,
-  Mail,
-  Phone,
-  MessageSquare,
-  Twitter,
-  Instagram,
-  Linkedin,
-  UserCheck,
-  PieChart,
-  CalendarClock,
-  FileSearch,
-  Mic,
-  Brain,
-  Monitor,
-  Check,
-  Rocket,
-  Menu,
-  X,
-  FileText,
-  Target,
-  Users,
-  MessageCircle,
-  Clock,
-  Shield,
-  Zap,
-  MapPin
-} from 'lucide-react';
-import heroimg from '../../img/callbot.png'
-import flicker from '../../img/Flicker Free.png'
-import look from '../../img/Look For.png'
-import tech from '../../img/Technology.png'
-import power from '../../img/Turn On.png'
-import contact from '../../img/contact.png'
-import ownsite from '../../img/Group 507.png'
-import philips from '../../img/philips.png'
-import nestle from '../../img/nestle.png'
-import honda from '../../img/honda.png'
-import comp from '../../img/comp.png'
-import toyota from '../../img/toyota.png'
-import suzuki from '../../img/suzuki.png'
-import deloitte from '../../img/deloitte.png'
-import toyo from '../../img/toyo.png'
-import quote from '../../img/quote.png'
+import React, { useMemo, useState } from "react";
 import axios from 'axios';
+import { superAdminBaseUrl } from '../../utils/ApiConstants';
+import LP1 from "../../img/LP1.png";
+import LP2 from "../../img/LP2.png";
+import LP3 from "../../img/LP3.png";
+import LP4 from "../../img/LP4.png";
+import LP5 from "../../img/LP5.png";
+import LP6 from "../../img/LP6.png";
+import LP7 from "../../img/LP7.png";
+import mainimg from "../../img/LP-Main.png";
+import footerbg from "../../img/footer.png";
+import contactimg from "../../img/contactimg.png";
+import Facebook from "../../img/Facebook.png";
+import Instagram from "../../img/Instagram.png";
+import Twitter from "../../img/Twitter.png";
+import { useNavigate } from "react-router-dom";
 
-function useFadeInAnimation() {
-  useEffect(() => {
-    if (!document.getElementById('fade-in-animation-style')) {
-      const style = document.createElement('style');
-      style.id = 'fade-in-animation-style';
-      style.innerHTML = `
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.25s ease;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
-}
-
-const LandingPage = () => {
-  useFadeInAnimation();
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
+export default function LandingPage() {
+  const [openFaq, setOpenFaq] = useState(null);
+  const [mobileMenu, setMobileMenu] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -87,114 +30,17 @@ const LandingPage = () => {
   const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
   const navigate = useNavigate();
 
-  const navigation = [
-    { name: 'Home', href: '#home' },
-    { name: 'Features', href: '#features' },
-    { name: 'How It Works', href: '#how-it-works' },
-    { name: 'Contact', href: '#contact' },
-  ];
-
-  const features = [
-    {
-      icon: <Search className="w-8 h-8" />,
-      title: 'AI Resume Screening',
-      description: 'Automatically analyze and rank candidates based on job requirements.'
-    },
-    {
-      icon: <Handshake className="w-8 h-8" />,
-      title: 'Smart Matching',
-      description: 'Our algorithm finds the perfect candidate-job fit with 95% accuracy.'
-    },
-    {
-      icon: <UserCheck className="w-8 h-8" />,
-      title: 'Candidate Insights',
-      description: 'Understand candidate behavior, engagement, and readiness with AI-driven insights.'
-    },
-    {
-      icon: <BarChart3 className="w-8 h-8" />,
-      title: 'Advanced Analytics',
-      description: 'Get actionable insights into your hiring pipeline and candidate quality.'
+  const scrollToSection = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
-  ];
-
- 
-
- 
-
-  const goToSlide = (index) => {
-    setCurrentIndex(index);
   };
-
-
-
-  const benefits = [
-    {
-      icon: flicker,
-      title: 'Hiring Time',
-      description: 'Significantly reduce hiring cycle by pre-qualified candidates',
-      color: 'bg-blue-500'
-    },
-    {
-      icon: power,
-      title: 'Industry Recruiting',
-      description: 'Industry-ready with pre-qualified candidates',
-      color: 'bg-green-500'
-    },
-    {
-      icon: tech,
-      title: 'Bias-Free Screening',
-      description: 'Industry-ready with pre-qualified candidates',
-      color: 'bg-purple-500'
-    },
-    {
-      icon: look,
-      title: 'Seamless Integration',
-      description: 'Industry-ready with pre-qualified candidates',
-      color: 'bg-orange-500'
-    }
-  ];
-
-  const steps = [
-    {
-      number: '01',
-      title: 'Post Your Role',
-      description: 'Submit your job role along with specific skill requirements',
-      icon: <FileText className="w-8 h-8" />,
-      color: 'bg-purple-500'
-    },
-    {
-      number: '02',
-      title: 'AI Talent Match',
-      description: 'Our system uses intelligent algorithms to find perfect matches',
-      icon: <Target className="w-8 h-8" />,
-      color: 'bg-blue-500'
-    },
-    {
-      number: '03',
-      title: 'Smart Screening',
-      description: 'AI technology automatically screens and scores your candidates',
-      icon: <Users className="w-8 h-8" />,
-      color: 'bg-green-500'
-    },
-    {
-      number: '04',
-      title: 'Interview Ready Shortlist',
-      description: 'Get pre-qualified candidates ready for final round of recruiting',
-      icon: <MessageCircle className="w-8 h-8" />,
-      color: 'bg-orange-500'
-    }
-  ];
-
-  const quickLinks = [
-    { name: 'Features', href: '#features' },
-    { name: 'How It Works', href: '#how-it-works' },
-    // { name: 'Resources', href: '#resources' }
-  ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'phoneNumber') {
-      // Allow only digits and limit to 10 characters
       const numericValue = value.replace(/\D/g, '').slice(0, 10);
       setFormData({
         ...formData,
@@ -213,7 +59,6 @@ const LandingPage = () => {
     setIsSubmitting(true);
     setSubmitStatus({ type: '', message: '' });
 
-    // Validation
     if (formData.phoneNumber.length !== 10) {
       setSubmitStatus({ type: 'error', message: 'Phone number must be exactly 10 digits.' });
       setIsSubmitting(false);
@@ -227,10 +72,9 @@ const LandingPage = () => {
         phone: formData.phoneNumber,
         message: formData.message
       });
-      // console.log(response.data);
 
       if (response.data.status === 'success') {
-        setSubmitStatus({ type: 'success', message: 'Your enquiry has been submitted successfully!' });
+        setSubmitStatus({ type: 'success', message: 'Your form has been submitted successfully!' });
         setFormData({
           firstName: '',
           lastName: '',
@@ -249,598 +93,706 @@ const LandingPage = () => {
     }
   };
 
+  const whyCards = [
+    {
+      title: "Cut Hiring Time",
+      desc: "Significantly reduce hiring cycle by pre-qualified candidates.",
+      img: LP1,
+    },
+    {
+      title: "Always-on Recruiting",
+      desc: "Recruit smarter with always-on, automated, continuous hiring.",
+      img: LP2,
+    },
+    {
+      title: "Bias Free Screening",
+      desc: "Fair, unbiased AI screening for smarter candidate selection.",
+      img: LP3,
+    },
+    {
+      title: "Seamless Integration",
+      desc: "Effortless integration with tools for smooth workflows.",
+      img: LP4,
+    },
+  ];
 
-  // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const userId = localStorage.getItem('userId'); // Replace with actual user ID logic
+  const steps = [
+    {
+      n: 1,
+      title: "Post Your Role",
+      desc: "Describe your ideal candidate in plain language",
+    },
+    {
+      n: 2,
+      title: "AI Talent Match",
+      desc: "Our system scans thousands of profiles instantly",
+    },
+    {
+      n: 3,
+      title: "Smart Screening",
+      desc: "Automated skill tests and candidate scoring",
+    },
+    {
+      n: 4,
+      title: "Interview-Ready Shortlist",
+      desc: "Receive a curated list of top matches",
+    },
+  ];
 
-  useSocket(userId, (data) => {
-    setNotifications((prev) => [data, ...prev]);
-  });
+  const features = [
+    {
+      title: "Smart Resume Screening",
+      desc: "Automatically filter and shortlist candidates with AI that reads between the lines and understands real talent.",
+      art: LP5,
+    },
+    {
+      title: "AI Interview Automation",
+      desc: "Our intelligent AI system conducts automated interviews to make the hiring process faster, unbiased, and more efficient.",
+      art: LP6,
+    },
+    {
+      title: "Real Time Analysis",
+      desc: "Make data-backed hiring decisions using deep insights on candidates, job roles, and funnel efficiency.",
+      art: LP7,
+    },
+  ];
+
+  const faqs = useMemo(
+    () => [
+      {
+        q: "How does the AI Screening process work?",
+        a: "You submit your job requirements and candidate pool. Our AI evaluates resumes and screening signals against role criteria, then surfaces a ranked shortlist with key highlights to help you decide faster.",
+      },
+      {
+        q: "How long does it take to setup?",
+        a: "Setup is quick—typically minutes to connect your workflow and publish your role. You can start receiving matched candidates and screening results shortly after.",
+      },
+      {
+        q: "Is the Interview process biased?",
+        a: "We focus on structured, criteria-based evaluation. Automated scoring and consistent question sets help reduce subjective bias and keep comparisons fair across candidates.",
+      },
+    ],
+    []
+  );
+
+  const renderFeatureTitle = (title) => {
+    const words = title.split(" ");
+    const firstWord = words[0];
+    const restWords = words.slice(1).join(" ");
+
+    return (
+      <>
+        <span className="text-[#BF00FF]">{firstWord}</span>
+        {restWords && <span> {restWords}</span>}
+      </>
+    );
+  };
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2">
-              <img src={Logo} alt="Recruter AI Logo" className="h-12 w-auto" />
-            </div>
+    <div className="min-h-screen bg-white text-slate-900">
 
-            <nav className="hidden md:flex items-center space-x-8">
-              {navigation.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  className="text-gray-700 hover:text-[#6D28D9] transition-colors duration-200 font-medium"
-                >
-                  {item.name}
-                </a>
-              ))}
-            </nav>
+      <header className="mx-auto max-w-6xl px-4 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
 
-            <div className="hidden md:flex items-center space-x-2">
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  className="relative p-2 rounded-full hover:bg-gray-100"
-                  onClick={() => setShowDropdown((prev) => !prev)}
-                  aria-label="Notifications"
-                >
-                  {/* <svg className="w-6 h-6 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg> */}
-                  {notifications.length > 0 && (
-                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                      {notifications.length}
-                    </span>
-                  )}
-                </button>
-                {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 animate-fade-in">
-                    <div className="p-4 border-b font-semibold text-[#6D28D9] flex items-center gap-2">
-                      <svg className="w-5 h-5 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                      Notifications
-                    </div>
-                    <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100">
-                      {notifications.length === 0 ? (
-                        <li className="p-6 text-gray-400 text-center">No notifications yet.</li>
-                      ) : (
-                        notifications.map((notif, idx) => (
-                          <li key={idx} className="p-4 flex gap-3 items-start hover:bg-gray-50 transition-all duration-200">
-                            <div className="flex-shrink-0">
-                              <svg className="w-6 h-6 text-[#6D28D9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-800 mb-1">{notif.message}</div>
-                              {notif.link && (
-                                <a href={notif.link} className="text-[#6D28D9] text-sm hover:underline font-semibold">View Details</a>
-                              )}
-                              <div className="text-xs text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString()}</div>
-                            </div>
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  </div>
-                )}
+          <div className="text-2xl font-bold text-[#9730BA]">
+            RecruterAI
+          </div>
 
-              {/* import { useEffect } from 'react'; */}
+          <nav className="hidden items-center gap-10 text-[15px] font-medium text-slate-700 md:flex">
+            <a href="#home" onClick={(e) => scrollToSection(e, 'home')} className="hover:text-black cursor-pointer">Home</a>
+            <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-black cursor-pointer">Features</a>
+            <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-black cursor-pointer">How It Works</a>
+            <a href="#contact" onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-black cursor-pointer">Contact</a>
+          </nav>
 
-              {/* function useFadeInAnimation() {
-                useEffect(() => {
-                  if (!document.getElementById('fade-in-animation-style')) {
-                    const style = document.createElement('style');
-                    style.id = 'fade-in-animation-style';
-                    style.innerHTML = `
-                      @keyframes fade-in {
-                        from { opacity: 0; transform: translateY(-10px); }
-                        to { opacity: 1; transform: translateY(0); }
-                      }
-                      .animate-fade-in {
-                        animation: fade-in 0.25s ease;
-                      }
-                    `;
-                    document.head.appendChild(style);
-                  }
-                }, [])
-              } */}
-              </div>
-              <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => navigate('/login')}>
-                Login
-              </button>
-              <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => navigate('/CandidateLogin')}>
-                Login as a candidate
-              </button>
-            </div>
-
-            <button
-              className="md:hidden p-2"
-              onClick={() => setIsOpen(!isOpen)}
+          <div className="hidden items-center gap-4 md:flex">
+            <button className="rounded-xl border border-[#9931BC] px-6 py-2 text-sm font-medium text-[#9931BC] transition hover:bg-[#F3E8FF]"
+              onClick={() => navigate("/login")}
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              LogIn
+            </button>
+            <button className="rounded-xl bg-gradient-to-r from-[#9931BC] to-[#4F1878] px-6 py-2 text-sm font-medium text-white shadow-md"
+              onClick={() => navigate("/CandidateLogin")}
+            >
+              LogIn as Candidate
             </button>
           </div>
 
-          {isOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
-              <nav className="flex flex-col space-y-4">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium py-2"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {item.name}
-                  </a>
-                ))}
-                <div className="flex flex-col space-y-2 pt-4">
-                  <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium">
-                    Login
-                  </button>
-                  <button className="border border-[#6D28D9] text-[#6D28D9] px-6 py-1 rounded-2xl font-medium" onClick={() => { setIsOpen(false); navigate('/CandidateLogin'); }}>
-                    Login as a candidate
-                  </button>
-                </div>
-              </nav>
-            </div>
-          )}
+          <button
+            onClick={() => setMobileMenu(!mobileMenu)}
+            className="md:hidden"
+          >
+            <svg
+              className="h-6 w-6 text-slate-800"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={
+                  mobileMenu
+                    ? "M6 18L18 6M6 6l12 12"
+                    : "M4 6h16M4 12h16M4 18h16"
+                }
+              />
+            </svg>
+          </button>
         </div>
+
+        {mobileMenu && (
+          <div className="border-t border-slate-200 bg-white px-4 pb-6 md:hidden">
+            <div className="flex flex-col gap-4 pt-4 text-[15px] font-medium text-slate-700">
+              <a href="#home" onClick={(e) => { scrollToSection(e, 'home'); setMobileMenu(false); }}>Home</a>
+              <a href="#features" onClick={(e) => { scrollToSection(e, 'features'); setMobileMenu(false); }}>Features</a>
+              <a href="#how-it-works" onClick={(e) => { scrollToSection(e, 'how-it-works'); setMobileMenu(false); }}>How It Works</a>
+              <a href="#contact" onClick={(e) => { scrollToSection(e, 'contact'); setMobileMenu(false); }}>Contact</a>
+
+              <div className="mt-4 flex flex-col gap-3">
+                <button className="rounded-xl border border-[#9931BC] py-2 text-sm font-medium text-[#9931BC]"
+                  onClick={() => navigate("/login")}
+                >
+                  LogIn
+                </button>
+                <button className="rounded-xl bg-gradient-to-r from-[#9931BC] to-[#4F1878] py-2 text-sm font-medium text-white"
+                  onClick={() => navigate("/CandidateLogin")}
+                >
+                  LogIn as Candidate
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Hero Section */}
-      <section id="home" className="relative pt-20 pb-16 px-6 bg-gradient-to-br from-purple-50 via-white to-blue-50 overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-300 opacity-20 rounded-full filter blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-400 opacity-20 rounded-full filter blur-3xl translate-x-1/2 translate-y-1/2"></div>
+      <div className="mx-auto max-w-6xl px-4 pt-10 md:pt-14">
 
-        <div className="relative container mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="text-center lg:text-left">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl text-[#7C3AED] font-bold leading-tight mb-6">
-                Hire Smarter, Faster, and Without the Hassle
+        <section id="home" className="mb-14 md:mb-16">
+          <div className="relative overflow-hidden rounded-[28px] bg-[#FBF7FF] px-6 pt-12 md:px-12 md:pt-16">
+
+            <div className="pointer-events-none absolute inset-0">
+              <span className="absolute left-8 top-10 text-[#BF00FF]/20">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <path
+                    d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+
+              <span className="absolute right-10 top-12 text-[#BF00FF]/18">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                  <path
+                    d="M9 18h6M10 22h4"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M12 2a7 7 0 0 0-4 12c.7.6 1 1.2 1 2h6c0-.8.3-1.4 1-2A7 7 0 0 0 12 2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+
+              <span className="absolute left-14 top-40 text-[#BF00FF]/14">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                  <path
+                    d="M7 7h10a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-6a4 4 0 0 1 4-4Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M8 12h8M8 16h5"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+
+              <span className="absolute right-16 top-44 text-[#BF00FF]/16">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <path
+                    d="M4 14c2-4 6-7 11-7 2 0 4 .5 5 1"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M10 14a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M20 8v4h-4"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+
+              <span className="absolute bottom-10 left-10 text-[#BF00FF]/18">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <path
+                    d="M12 2l1.2 4.2L17.5 8l-4.3 1.2L12 13.5l-1.2-4.3L6.5 8l4.3-1.8L12 2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+
+              <span className="absolute bottom-8 right-12 text-[#BF00FF]/14">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                  <path
+                    d="M6 18V6M18 18V6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M8.5 12h7"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </div>
+
+            <div className="relative mx-auto max-w-3xl text-center">
+              <h1 className="text-[38px] font-semibold leading-[1.1] text-slate-900 md:text-[56px]">
+                Revolutionize Your <br />
+                <span className="bg-gradient-to-r from-[#C04AE8] to-[#42158B] bg-clip-text text-transparent font-bold">
+                  Hiring
+                </span>{" "}
+                Process with <br />
+                <span className="bg-gradient-to-r from-[#C04AE8] to-[#42158B] bg-clip-text text-transparent font-bold">
+                  AI-Powered
+                </span>{" "}
+                Solutions
               </h1>
-              <p className='my-10 text-xl'>
-                Our RecruterAI finds, screens, and engages top talent 24/7—so you can focus on growing your business, not chasing resumes
+
+              <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 md:text-[15px]">
+                Our Recruter AI finds, screens, and engages top talent 24/7—so
+                you can focus on growing your business, not chasing resumes
               </p>
-              {/* <div className="flex flex-col sm:flex-row justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
-                <button className="border border-[#6D28D9] bg-[#6D28D9] transition duration-300 text-white px-8 py-3 rounded-3xl font-semibold shadow-xl hover:scale-105 transform">
-                  Get Started
-                </button>
-                <button className="border-2 border-[#6D28D9] text-[#6D28D9] transition duration-300 px-8 py-2 rounded-3xl font-semibold shadow-sm hover:scale-105 transform">
-                  Book a Demo
-                </button>
-              </div> */}
             </div>
 
-            <div className="flex justify-center items-center">
-              <div className="">
-                <img
-                  src={heroimg}
-                  alt="AI Recruitment Platform"
-                  className="transform hover:scale-105 transition-transform duration-300"
-                />
+            <div className="relative mt-10 -mb-5 flex justify-center md:mt-12">
+              <div className="w-full max-w-5xl">
+                <div className="rounded-2xl bg-white p-1 shadow-[0_18px_70px_rgba(149,0,168,0.18)] border-7 border-slate-200">
+                  <img
+                    src={mainimg}
+                    alt="Hero preview"
+                    className="w-full rounded-xl object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-     
-
-
-      {/* Why Choose Us */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#7C3AED] mb-4">
-              Why Choose Us
-            </h2>
+        <section className="text-center">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-[#BF00FF]" />
+            <span className="text-[14px] font-medium italic tracking-wide text-[#BF00FF]">
+              Why Choose Us?
+            </span>
+            <span className="h-px w-16 bg-[#BF00FF]" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {benefits.map((benefit, index) => (
+          <h2 className="mt-3 text-2xl font-semibold md:text-3xl">
+            Choose us to hire smarter, faster,
+            <br className="hidden md:block" />
+            and with confidence.
+          </h2>
+
+          <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {whyCards.map(({ title, desc, img }) => (
               <div
-                key={index}
-                className="bg-gray-50 shadow-[0px_0px_11px_-2px_#7C3AED] text-center rounded-2xl p-6 transition-all duration-300 group"
+                key={title}
+                className="rounded-xl border border-slate-300 bg-white p-5 text-left shadow-[0_1px_0_rgba(15,23,42,0.02)]"
               >
-                <div className="flex justify-center mb-4">
+                <span className="inline-flex h-7 w-7 items-center justify-center">
                   <img
-                    src={benefit.icon}
-                    alt={benefit.title}
-                    className="w-15 h-15 object-contain"
+                    src={img}
+                    alt=""
+                    className="h-full w-full object-contain"
                   />
-                </div>
-                <h3 className="font-semibold mb-2 text-[#7C3AED]">
-                  {benefit.title}
-                </h3>
-                <p className="text-sm leading-relaxed">
-                  {benefit.description}
-                </p>
+                </span>
+                <h3 className="mt-4 font-semibold text-[#730099]">{title}</h3>
+                <p className="mt-2 text-sm">{desc}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-gray-50">
-        <div className="container mx-auto">
-          <div className="text-center mb-16 max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-[#7C3AED] mb-4">
-                Features
-              </h2>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Our platform leverages cutting-edge AI intelligence to streamline your hiring process
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mx-auto gap-8 max-w-5xl">
-            <div className="bg-white rounded-2xl p-8 shadow-[0px_0px_11px_-2px_#7C3AED] transition-shadow duration-300">
-              <div className="flex items-center mb-6">
-                <div className="bg-purple-500 p-3 rounded-xl mr-4">
-                  <FileSearch className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Smart</h3>
-                  <p className="text-gray-600">Resume Screening</p>
-                </div>
-              </div>
-
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Automatically filter and shortlist candidates with AI that reads between the lines and understands real talent.
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Contextual keyword analysis</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Skill and experience scoring</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Auto-rejection of irrelevant resumes</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-8 shadow-[0px_0px_11px_-2px_#7C3AED] transition-shadow duration-300">
-              <div className="flex items-center mb-6">
-                <div className="bg-blue-500 p-3 rounded-xl mr-4">
-                  <Mic className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">AI Interview</h3>
-                  <p className="text-gray-600">Automation</p>
-                </div>
-              </div>
-
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Our intelligent AI system conducts automated interviews to make the hiring process faster, unbiased, and more efficient.
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Real-time video and voice analysis</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Instant scoring and feedback</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Pre-set questions for consistent evaluation</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-8 shadow-[0px_0px_11px_-2px_#7C3AED] transition-shadow duration-300">
-              <div className="flex items-center mb-6">
-                <div className="bg-green-600 p-3 rounded-xl mr-4">
-                  <PieChart className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Real-time</h3>
-                  <p className="text-gray-600">Analytics</p>
-                </div>
-              </div>
-
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Make data-backed hiring decisions using deep insights on candidates, job roles, and funnel efficiency.
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Hiring funnel drop-off tracking</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Candidate quality score</span>
-                </div>
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-1 rounded-full mr-3 mt-1">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">Role-based performance dashboards</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              How It Works
-            </h2>
+        <section id="how-it-works" className="mt-14 text-center md:mt-16">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-[#BF00FF]" />
+            <span className="text-[14px] font-medium italic tracking-wide text-[#BF00FF]">
+              How Does It Work?
+            </span>
+            <span className="h-px w-16 bg-[#BF00FF]" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {steps.map((step, index) => (
-              <div
-                key={index}
-                className="group text-center hover:transform hover:scale-105 transition-all  shadow-[0px_0px_11px_-2px_#7C3AED] rounded-2xl duration-300"
-              >
-                <div className="bg-purple-50 rounded-2xl p-6 mb-4">
-                  <p className="text-6xl font-bold text-transparent mb-2" style={{ WebkitTextStroke: "2px #6D28D9" }}>
-                    {step.number}
-                  </p>
-                  <h3 className="font-semibold text-[#7C3AED] mb-2 text-lg">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <h2 className="mt-3 text-2xl font-semibold md:text-3xl">
+            See how our AI simplifies hiring in
+            <br className="hidden md:block" />
+            a few smart steps.
+          </h2>
 
-      
+          <div className="relative mt-10">
+            <div className="absolute left-0 right-0 top-4 hidden h-px border-t border-dashed border-[#BF00FF]/50 lg:block" />
 
-
-      
-
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="container mx-auto">
-          <div className="bg-gradient-to-r from-[#360188] to-[#164DA6] py-10 rounded-3xl text-center px-8">
-            <div className="flex justify-center items-center gap-4 mb-6">
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Hire Better. Faster. Smarter.
-              </h2>
-            </div>
-
-            <p className="text-white text-lg mb-10 max-w-3xl mx-auto leading-relaxed">
-              Discover a smarter way to recruit. Let UserPitch streamline your hiring process with <br /> intelligent matching, data-driven insights, and seamless automation.
-            </p>
-
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Form */}
-      <section id="contact" className="py-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-white rounded-2xl overflow-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-2">
-                {/* Left Side Image */}
-                <div className="w-full h-64 lg:h-auto">
-                  <img
-                    src={contact}
-                    alt="Contact"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* Right Side Form */}
-                <div className="p-6 sm:p-8 lg:p-10">
-                  <div className="mb-8 text-center lg:text-left">
-                    <h2 className="flex items-center text-2xl sm:text-3xl font-bold text-[#6D28D9] mb-2">
-                      Take the First Step
-                      <span className="flex-1 ml-4 border-t-2 border-[#6D28D9]"></span>
-                    </h2>
-
-                    <h3 className="text-2xl sm:text-3xl font-semibold mb-4">
-                      See It in Action
-                    </h3>
-                    <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
-                      Experience the difference for yourself. Schedule a live demo
-                      with our team and watch RecruterAI transform your hiring
-                      process.
+            <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {steps.map((s) => (
+                <div key={s.n} className="relative">
+                  <div className="mx-auto flex flex-col items-center">
+                    <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#BF00FF] text-xs font-semibold text-white shadow-sm">
+                      {s.n}
+                    </div>
+                    <h4 className="mt-3 font-semibold text-[#BF00FF]">
+                      {s.title}
+                    </h4>
+                    <p className="mt-2 max-w-[15rem] text-sm">
+                      {s.desc}
                     </p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="mt-14 text-center md:mt-16">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-[#BF00FF]" />
+            <span className="text-[14px] font-medium italic tracking-wide text-[#BF00FF]">
+              Features
+            </span>
+            <span className="h-px w-16 bg-[#BF00FF]" />
+          </div>
+
+          <h2 className="mt-3 text-2xl font-semibold text-slate-800 md:text-3xl">
+            Powerful capabilities designed to simplify and
+            <br className="hidden md:block" />
+            elevate your hiring experience.
+          </h2>
+
+          <div className="mt-10 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-[0_10px_30px_#9500A80D]"
+              >
+                <img
+                  src={f.art}
+                  alt={f.title}
+                  className="w-full object-contain"
+                />
+                <h3 className="mt-4 text-lg font-semibold text-center">
+                  {renderFeatureTitle(f.title)}
+                </h3>
+                <p className="mt-2 text-sm text-center">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-16 md:mt-20">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-[#BF00FF]" />
+            <span className="text-[14px] font-medium italic tracking-wide text-[#BF00FF]">
+              Frequently Asked Questions
+            </span>
+            <span className="h-px w-16 bg-[#BF00FF]" />
+          </div>
+
+          <h2 className="mx-auto mt-3 max-w-3xl text-center text-2xl font-semibold md:text-3xl">
+            Answers to common questions about our
+            <br className="hidden md:block" />
+            platform and hiring process.
+          </h2>
+
+          <div className="mx-auto mt-10 max-w-5xl space-y-5">
+            {faqs.map((item, idx) => {
+              const isOpen = openFaq === idx;
+
+              return (
+                <div
+                  key={item.q}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.02)]"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() =>
+                      setOpenFaq((v) => (v === idx ? null : idx))
+                    }
+                    className="flex w-full items-center justify-between gap-4 px-6 py-6 text-left"
+                  >
+                    <span className="text-[10px] font-semibold md:text-[15px]">
+                      {item.q}
+                    </span>
+
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className={`h-5 w-5 transition-transform duration-200 ${isOpen ? "rotate-180" : "rotate-0"
+                          }`}
+                      >
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+
+                  <div
+                    className={`grid overflow-hidden px-6 transition-all duration-300 ${isOpen
+                      ? "grid-rows-[1fr] pb-6 opacity-100"
+                      : "grid-rows-[0fr] pb-0 opacity-0"
+                      }`}
+                  >
+                    <div className="min-h-0">
+                      <p className="text-sm leading-6">
+                        {item.a}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="contact" className="relative z-10 mt-16 mb-[-80px] md:mt-20">
+          <div className="relative overflow-hidden rounded-[28px] bg-[#FBF7FF] p-6 md:p-10">
+            <div className="relative grid items-center gap-10 grid-cols-1 md:grid-cols-2">
+
+              <div className="text-left">
+                <div>
+                  <img src={contactimg} alt="" />
+                </div>
+
+                <h3 className="text-3xl font-semibold leading-tight mt-10">
+                  Take the <span className="text-[#BF00FF]">First</span> Step
+                </h3>
+
+                <p className="mt-3 max-w-md text-sm leading-6">
+                  Experience the difference for yourself. Schedule a live demo
+                  with our team and watch RecruterAI in action
+                </p>
+              </div>
+
+              <div className="relative">
+                <div className="pointer-events-none absolute -left-4 -top-4 h-16 w-16 rounded-full bg-[#BF00FF]/40 blur-xl" />
+                <div className="pointer-events-none absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-[#BF00FF]/40 blur-xl" />
+
+                <form
+                  onSubmit={handleSubmit}
+                  className="relative rounded-2xl bg-white p-6 shadow-[0_18px_60px_rgba(17,24,39,0.12)] md:p-8"
+                >
+                  <h4 className="text-left text-lg font-semibold text-slate-900">
+                    Enter Your <span className="text-[#BF00FF]">Details</span>
+                  </h4>
 
                   {submitStatus.message && (
-                    <div className={`mb-4 p-4 rounded-lg ${submitStatus.type === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>
+                    <div className={`mt-4 p-4 rounded-lg ${submitStatus.type === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>
                       {submitStatus.message}
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Name Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <input
-                        type="text"
-                        name="firstName"
-                        placeholder="First Name"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <input
-                        type="text"
-                        name="lastName"
-                        placeholder="Last Name"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-
-                    {/* Email + Phone */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <input
-                        type="email"
-                        name="email"
-                        placeholder="Email ID"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        placeholder="Phone Number"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-
-                    {/* Message Box */}
-                    <textarea
-                      name="message"
-                      placeholder="Message"
-                      rows={4}
-                      value={formData.message}
+                  <div className="mt-5 grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <input
+                      name="firstName"
+                      value={formData.firstName}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
                       required
                       disabled={isSubmitting}
-                    ></textarea>
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
+                      className="h-12 w-full rounded-lg bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#BF00FF]/35"
+                      placeholder="First Name"
+                    />
+                    <input
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      required
                       disabled={isSubmitting}
-                      className={`w-full py-3 px-6 rounded-lg font-semibold transition-transform duration-200 transform ${isSubmitting
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700 hover:scale-105'} text-white`}
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Book your Demo Now!'}
-                    </button>
-                  </form>
-                </div>
+                      className="h-12 w-full rounded-lg bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#BF00FF]/35"
+                      placeholder="Last Name"
+                    />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      disabled={isSubmitting}
+                      className="h-12 w-full rounded-lg bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#BF00FF]/35"
+                      placeholder="Email ID"
+                    />
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={handleChange}
+                      required
+                      disabled={isSubmitting}
+                      className="h-12 w-full rounded-lg bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#BF00FF]/35"
+                      placeholder="Phone Number"
+                    />
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
+                      required
+                      disabled={isSubmitting}
+                      className="min-h-[110px] w-full resize-none rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#BF00FF]/35 md:col-span-2"
+                      placeholder="Write your message"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`mt-5 h-12 w-full rounded-lg text-sm font-semibold text-white shadow-[0_10px_30px_rgba(191,0,255,0.25)] ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#BF00FF] to-[#2A0A5E]'}`}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Book your demo'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      {/* Footer */}
-      <footer className="bg-[#250C4C] text-white">
-        <div className="container mx-auto px-6 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Company Info */}
+      <footer className="relative pt-32 text-white overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url(${footerbg})`
+          }}
+        >
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-6xl px-4 pb-10">
+          <div className="grid gap-10 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+
             <div>
-              <div className="flex items-center space-x-2 mb-6">
-                <span className="text-3xl font-bold">Recruter AI</span>
-              </div>
-              <p className="mb-6 leading-relaxed">
+              <div className="text-xl font-semibold">RecruterAI</div>
+              <p className="mt-3 max-w-xs text-sm text-white/80">
                 Smarter hiring with AI-powered interviews
               </p>
-              <div className="flex space-x-4">
-                <a href="#" className="text-white transition-colors duration-200">
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a href="#" className="text-white transition-colors duration-200">
-                  <Linkedin className="w-5 h-5" />
-                </a>
-                <a href="#" className="text-white transition-colors duration-200">
-                  <Instagram className="w-5 h-5" />
-                </a>
+
+              <div className="mt-4 flex items-center gap-3 text-white/90">
+                <img src={Twitter} alt="Twitter" className="h-7 w-5" />
+                <img src={Facebook} alt="Facebook" className="h-7 w-5" />
+                <img src={Instagram} alt="Instagram" className="h-7 w-5" />
               </div>
             </div>
 
-            {/* Quick Links */}
             <div>
-              <h3 className="text-lg font-semibold mb-6">Quick Link</h3>
-              <ul className="space-y-3">
-                {quickLinks.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      className="text-white transition-colors duration-200"
-                    >
-                      {link.name}
-                    </a>
-                  </li>
-                ))}
+              <div className="text-lg font-semibold">Quick Link</div>
+              <ul className="mt-4 space-y-2 text-sm text-white/85">
+                <li>
+                  <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white">Features</a>
+                </li>
+                <li>
+                  <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-white">How It Works</a>
+                </li>
               </ul>
             </div>
 
-            {/* Contact Info */}
             <div>
-              <h3 className="text-lg font-semibold mb-6">Contact</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-5 h-5" />
-                  <span className="">+91 9147410041</span>
+              <div className="text-lg font-semibold">Contact</div>
+              <div className="mt-4 space-y-3 text-sm text-white/85">
+                <div className="flex items-start gap-3">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="mt-0.5 h-4 w-4"
+                    fill="none"
+                  >
+                    <path
+                      d="M22 16.92v2a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.12.86.32 1.7.57 2.5a2 2 0 0 1-.45 2.11L7.1 9.9a16 16 0 0 0 6 6l1.57-1.13a2 2 0 0 1 2.11-.45c.8.25 1.64.45 2.5.57A2 2 0 0 1 22 16.92Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>+91 9147410041</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-5 h-5" />
-                  <span className="">sales@netfotech.in</span>
+
+                <div className="flex items-start gap-3">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="mt-0.5 h-4 w-4"
+                    fill="none"
+                  >
+                    <path
+                      d="M4 6h16v12H4z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="m4 7 8 6 8-6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>sales@netfotech.in</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <MapPin className="w-5 h-5 mt-1" />
-                  <div className="">
-                    <p>World Trade Center,Kharadi,Pune</p>
-                    <p>Maharashta-411014,INDIA</p>
-                  </div>
+
+                <div className="flex items-start gap-3">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="mt-0.5 h-4 w-4"
+                    fill="none"
+                  >
+                    <path
+                      d="M12 21s7-4.35 7-11a7 7 0 1 0-14 0c0 6.65 7 11 7 11Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M12 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <span>
+                    World Trade Center,Kharadi,Pune
+                    <br />
+                    Maharashta-411014,INDIA
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Bar */}
-          <div className="border-t border-purple-700 mt-12 pt-6 text-center">
-            <p className="">
-              © 2026 Recruter AI. All rights reserved
-            </p>
+          <div className="mt-10 border-t border-white/15 pt-5 text-center text-xs text-white/70">
+            © 2025 RecruitAI. All rights reserved
           </div>
         </div>
       </footer>
     </div>
   );
-};
-
-export default LandingPage;
+}
