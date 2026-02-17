@@ -32,7 +32,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
 
 
   const handleLogout = () => {
-    localStorage.removeItem('candidateToken');
+    localStorage.removeItem('token');
     navigate('/Login');
   };
 
@@ -74,7 +74,7 @@ const AdminSidebar = ({ isOpen, onToggle }) => {
           fixed left-0 top-0 h-screen bg-gradient-to-b from-[#9A31BD] to-[#250B52] text-white z-50
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 w-64 flex flex-col shadow-xl
+          lg:translate-x-0 w-64 flex flex-col shadow-xl rounded-xl ml-1 my-1
         `}
       >
         <div className="flex items-center justify-between pb-8 py-4 px-6">
