@@ -10,7 +10,10 @@ function RecruiterManagement() {
   const [loading, setLoading] = useState(true);
   const [activityLogs, setActivityLogs] = useState([]);
   const [editingRecruiter, setEditingRecruiter] = useState(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
 
+  const [statusPopup, setStatusPopup] = useState(null);
+const [selectedActionRecruiter, setSelectedActionRecruiter] = useState(null);
   useEffect(() => {
     const fetchAllRecruiter = async () => {
       try {
@@ -215,26 +218,105 @@ function RecruiterManagement() {
     setEditingRecruiter(null);
   };
 
-  const handleToggleStatus = (recruiter) => {
-    const updatedRecruiters = recruiters.map(r => {
-      if (r.id === recruiter.id) {
-        return { ...r, status: r.status === 'Active' ? 'Inactive' : 'Active' };
+  // const handleToggleStatus = (recruiter) => {
+  //   const updatedRecruiters = recruiters.map(r => {
+  //     if (r.id === recruiter.id) {
+  //       return { ...r, status: r.status === 'Active' ? 'Inactive' : 'Active' };
+  //     }
+  //     return r;
+  //   });
+    
+  //   setRecruiters(updatedRecruiters);
+  //   setSelectedRecruiter({ ...recruiter, status: recruiter.status === 'Active' ? 'Inactive' : 'Active' });
+    
+  //   const newLog = {
+  //     date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+  //     action: `HR ${recruiter.name} ${recruiter.status === 'Active' ? 'Deactivated' : 'Activated'}`,
+  //     by: "Admin",
+  //     timestamp: Date.now()
+  //   };
+    
+  //   setActivityLogs(prev => [newLog, ...prev].slice(0, 5));
+  // };
+
+  const handleToggleStatus = async (recruiter) => {
+  try {
+    const res = await axios.put(
+      `${baseUrl}/auth/toggle-user/${recruiter.id}`, // ✅ backend API
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
       }
-      return r;
-    });
-    
-    setRecruiters(updatedRecruiters);
-    setSelectedRecruiter({ ...recruiter, status: recruiter.status === 'Active' ? 'Inactive' : 'Active' });
-    
-    const newLog = {
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      action: `HR ${recruiter.name} ${recruiter.status === 'Active' ? 'Deactivated' : 'Activated'}`,
-      by: "Admin",
-      timestamp: Date.now()
-    };
-    
-    setActivityLogs(prev => [newLog, ...prev].slice(0, 5));
-  };
+    );
+
+if (res.data.success) {
+  const updatedStatus = res.data.data.isActive ? 'Active' : 'Inactive';
+
+  // ✅ Update UI
+  const updatedRecruiters = recruiters.map(r =>
+    r.id === recruiter.id ? { ...r, status: updatedStatus } : r
+  );
+  setRecruiters(updatedRecruiters);
+
+  // ✅ Update selected recruiter
+  if (selectedRecruiter?.id === recruiter.id) {
+    setSelectedRecruiter(prev => ({
+      ...prev,
+      status: updatedStatus
+    }));
+  }
+
+  // ✅ Show success popup
+  setStatusPopup({
+    message: `User is now ${updatedStatus}`,
+    type: updatedStatus
+  });
+
+  // ✅ Auto close after 2 sec
+  setTimeout(() => {
+    setStatusPopup(null);
+  }, 2000);
+
+  
+  
+      
+
+      // ✅ Add activity log
+      const newLog = {
+        date: new Date().toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        }),
+        action: `HR ${recruiter.name} ${
+          updatedStatus === 'Active' ? 'Activated' : 'Deactivated'
+        }`,
+        by: "Admin",
+        timestamp: Date.now()
+      };
+
+      setActivityLogs(prev => [newLog, ...prev].slice(0, 5));
+
+      // alert(res.data.message); // optional
+
+    }
+
+  } catch (error) {
+    console.error("Error toggling status:", error);
+    // alert(error.response?.data?.message || "Failed to update status");
+  }
+};
+
+const confirmToggleStatus = async () => {
+  if (!selectedActionRecruiter) return;
+
+  await handleToggleStatus(selectedActionRecruiter);
+
+  setShowConfirmPopup(false);
+  setSelectedActionRecruiter(null);
+};
 
   if (loading) {
     return (
@@ -389,7 +471,10 @@ function RecruiterManagement() {
 
                 <div className="flex justify-between mt-6 gap-2">
                   <button 
-                    onClick={() => handleToggleStatus(selectedRecruiter)}
+                    onClick={() => {
+  setSelectedActionRecruiter(selectedRecruiter);
+  setShowConfirmPopup(true);
+}}
                     className={`border ${selectedRecruiter.status === 'Active' ? 'border-red-500 text-red-500' : 'border-green-500 text-green-500'} px-4 py-2 rounded-md font-medium hover:bg-opacity-10 transition flex-1`}>
                     {selectedRecruiter.status === 'Active' ? 'Deactivate' : 'Activate'}
                   </button>
@@ -433,6 +518,58 @@ function RecruiterManagement() {
             </div>
           </div> */}
         </div>
+        {showConfirmPopup && (
+  <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[360px] text-center border border-gray-200 transition-all duration-200 scale-100">
+      
+      {/* Icon */}
+      <div className={`mx-auto mb-3 w-12 h-12 flex items-center justify-center rounded-full 
+        ${selectedActionRecruiter?.status === 'Active' ? 'bg-red-100' : 'bg-green-100'}`}>
+        
+        {selectedActionRecruiter?.status === 'Active' ? '⚠️' : '✅'}
+      </div>
+
+      {/* Title */}
+      <h2 className="text-lg font-semibold mb-2 text-gray-800">
+        Confirm {selectedActionRecruiter?.status === 'Active' ? 'Deactivation' : 'Activation'}
+      </h2>
+
+      {/* Message */}
+      <p className="text-gray-600 mb-5">
+        Are you sure you want to{" "}
+        <span className="font-semibold">
+          {selectedActionRecruiter?.status === 'Active' ? 'Deactivate' : 'Activate'}
+        </span>{" "}
+        <br />
+        <span className="text-gray-800 font-medium">
+          {selectedActionRecruiter?.name}
+        </span> ?
+      </p>
+
+      {/* Buttons */}
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={() => setShowConfirmPopup(false)}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={confirmToggleStatus}
+          className={`px-4 py-2 rounded-lg text-white font-medium transition ${
+            selectedActionRecruiter?.status === 'Active'
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {selectedActionRecruiter?.status === 'Active' ? 'Deactivate' : 'Activate'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </>
   )
