@@ -50,18 +50,32 @@ export default function Examination() {
           if (!onlyNull) {
             // helper to parse date/time into a Date object
             const parseDateTime = (dateStr, timeStr) => {
-              if (!dateStr && !timeStr) return null;
-              try {
-                // Try combined parse first
-                const combined = `${dateStr || ''} ${timeStr || ''}`.trim();
-                let dt = combined ? new Date(combined) : null;
-                if (dt && !isNaN(dt)) return dt;
-                // fallback to dateStr alone
-                dt = dateStr ? new Date(dateStr) : null;
-                if (dt && !isNaN(dt)) return dt;
-              } catch (e) {}
-              return null;
-            };
+  if (!dateStr && !timeStr) return null;
+
+  try {
+    // 1. If dateStr is already a full ISO/GMT string, use it directly
+    let dt = new Date(dateStr);
+    
+    // Check if the date is valid AND if we actually have a separate timeStr to merge
+    if (!isNaN(dt) && timeStr) {
+      // Extract just the YYYY-MM-DD from the dateStr to avoid GMT conflicts
+      const datePart = dt.toISOString().split('T')[0];
+      dt = new Date(`${datePart} ${timeStr}`);
+    }
+
+    if (!isNaN(dt)) return dt;
+
+    // 2. Fallback: Try combining them if the first attempt failed
+    const combined = `${dateStr || ''} ${timeStr || ''}`.trim();
+    dt = new Date(combined);
+    
+    if (!isNaN(dt)) return dt;
+  } catch (e) {
+    console.error("Parsing error:", e);
+  }
+
+  return null;
+};
 
             const now = new Date();
 
@@ -105,8 +119,8 @@ export default function Examination() {
             const processed = availableTests.map(test => {
               const rawStart = test.exam_date || test.startDate || '';
               const rawEnd = test.end_date || test.endDate || '';
-              let startDT = parseDateTime(rawStart, test.test_start || test.startTime);
-              let endDT = parseDateTime(rawEnd, test.test_end || test.endTime);
+              let startDT = parseDateTime(rawStart, test.test_start || test.test_start);
+              let endDT = parseDateTime(rawEnd, test.test_end || test.test_end);
 
               // If parsing failed for date-only strings, try treating date-only as start/end of day
               const tryDateOnlyAsEndOfDay = (dateStr) => {
@@ -131,6 +145,24 @@ export default function Examination() {
                 return null;
               };
 
+              const formatToAMPM = (time24) => {
+  if (!time24) return "";
+
+  // Split "20:00" into [20, 00]
+  let [hours, minutes] = time24.split(':').map(Number);
+  
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  // Convert 24h to 12h format
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  
+  // Ensure minutes always have two digits (e.g., 05 instead of 5)
+  const strMinutes = minutes < 10 ? '0' + minutes : minutes;
+
+  return `${hours}:${strMinutes} ${ampm}`;
+};
+
               if (!startDT) startDT = tryDateOnlyAsStartOfDay(rawStart) || null;
               if (!endDT) endDT = tryDateOnlyAsEndOfDay(rawEnd) || null;
 
@@ -144,9 +176,11 @@ export default function Examination() {
               const dateOptions = { year: 'numeric', month: 'short', day: 'numeric' };
               const timeOptions = { hour: '2-digit', minute: '2-digit' };
               const displayStartDate = startDT ? startDT.toLocaleDateString(undefined, dateOptions) : (rawStart || 'Today');
-              const displayStartTime = startDT ? startDT.toLocaleTimeString(undefined, timeOptions) : (test.test_start || test.startTime || '10:00 AM');
+              var displayStartTime = startDT ? startDT.toLocaleTimeString(undefined, timeOptions) : (test.test_start || test.startTime || '10:00 AM');
+              displayStartTime = formatToAMPM(displayStartTime);
               const displayEndDate = endDT ? endDT.toLocaleDateString(undefined, dateOptions) : (rawEnd || '—');
-              const displayEndTime = endDT ? endDT.toLocaleTimeString(undefined, timeOptions) : (test.test_end || test.endTime || '—');
+              var displayEndTime = endDT ? endDT.toLocaleTimeString(undefined, timeOptions) : (test.test_end || test.endTime || '—');
+              displayEndTime = formatToAMPM(displayEndTime);
 
               // consider expired if endDT exists and is strictly before today start
               const isExpiredByDateOnly = endDT ? (endDT < todayStart) : false;
