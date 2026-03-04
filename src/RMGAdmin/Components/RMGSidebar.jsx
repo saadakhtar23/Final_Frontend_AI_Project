@@ -18,7 +18,7 @@ const RMGSidebar = ({ isOpen, onToggle }) => {
     const path = location.pathname;
 
     if (path.includes("/RMGAdmin-Dashboard/RequirementForm")) setActiveNav("RequirementForm");
-    else if (path.includes("/RMGAdmin-Dashboard/AssignedRecruiter")) setActiveNav("AssignedRecruiter");
+    else if (path.includes("/RMGAdmin-Dashboard/AssignedRecruiter")) setActiveNav("AssignedRecruiters");
     else if (path.includes("/RMGAdmin-Dashboard/RMGRaiseTickets")) setActiveNav("RaiseTickets");
     else if (path.includes("/RMGAdmin-Dashboard/RMGSupportTickets")) setActiveNav("SupportTickets");
     else if (path.includes("/RMGAdmin-Dashboard")) setActiveNav("RMGDashboard");

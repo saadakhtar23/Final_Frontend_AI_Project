@@ -225,7 +225,7 @@ const RMGRaiseTickets = () => {
                                 </button>
                             </div>
                             <button
-                                onClick={() => navigate('/RMGAdmin-Dashboard/RMGSupportTickets')}
+                                onClick={() => navigate('/RMGAdmin-Dashboard/RMGRaiseTickets/RMGSupportTickets')}
                                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap text-sm font-medium"
                             >
                                 Raise Tickets

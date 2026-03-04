@@ -73,57 +73,46 @@ const SeeHistory = () => {
     const itemsPerPage = 4;
     const currentJob = finalJobData[currentJobIndex];
 
-    const filteredCandidates = (currentJob.rawAppliedCandidates || [])
-        .filter(c => c.status === 'filtered')
-        .map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
+    const filteredCandidates = (currentJob.rawFilteredCandidates || [])
+    .map((fc, index) => {
+        const matched = (currentJob.rawAppliedCandidates || []).find(
+            (ac) => ac._id === fc.candidate || ac.candidateId === fc.candidate
+        );
+        return {
+            id: fc._id || index + 1,
+            name: matched?.name || "N/A",
+            email: matched?.email || "N/A",
+            phone: matched?.phone || "N/A",
             skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null,
-            appliedAt: candidate.appliedAt || null
-        }));
+            percentage: fc.aiScore || 0,
+            aiExplanation: fc.aiExplanation || "No explanation available",
+            resume: matched?.resume || null,
+            appliedAt: matched?.appliedAt || null,
+            candidateRefId: fc.candidate || null,
+        };
+    });
 
-    const unfilteredCandidates = (currentJob.rawAppliedCandidates || [])
-        .filter(c => c.status === 'unfiltered' || c.status !== 'filtered')
-        .map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
+const unfilteredCandidates = (currentJob.rawUnfilteredCandidates || [])
+    .map((uc, index) => {
+        const matched = (currentJob.rawAppliedCandidates || []).find(
+            (ac) => ac._id === uc.candidate || ac.candidateId === uc.candidate
+        );
+        return {
+            id: uc._id || index + 1,
+            name: matched?.name || "N/A",
+            email: matched?.email || "N/A",
+            phone: matched?.phone || "N/A",
             skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null,
-            appliedAt: candidate.appliedAt || null
-        }));
+            percentage: uc.aiScore || 0,
+            aiExplanation: uc.aiExplanation || "No explanation available",
+            resume: matched?.resume || null,
+            appliedAt: matched?.appliedAt || null,
+            candidateRefId: uc.candidate || null,
+        };
+    });
 
-    const finalFilteredCandidates = filteredCandidates.length > 0 ? filteredCandidates :
-        (currentJob.rawFilteredCandidates || []).map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null
-        }));
-
-    const finalUnfilteredCandidates = unfilteredCandidates.length > 0 ? unfilteredCandidates :
-        (currentJob.rawUnfilteredCandidates || []).map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null
-        }));
+const finalFilteredCandidates = filteredCandidates;
+const finalUnfilteredCandidates = unfilteredCandidates;
 
     const filteredTotalPages = Math.ceil(finalFilteredCandidates.length / itemsPerPage) || 1;
     const filteredStartIndex = (filteredPage - 1) * itemsPerPage;
@@ -288,7 +277,7 @@ const SeeHistory = () => {
                         <table className="w-full text-left min-w-[900px]">
                             <thead>
                                 <tr className="border-b border-gray-400 text-gray-700">
-                                    <th className="py-3 px-4">Sl.No</th>
+                                    <th className="py-3 px-4">Sr.No</th>
                                     <th className="py-3 px-4">Name</th>
                                     <th className="py-3 px-4">Email</th>
                                     <th className="py-3 px-4">Job Title</th>
@@ -355,7 +344,7 @@ const SeeHistory = () => {
                         <table className="w-full text-left min-w-[900px]">
                             <thead>
                                 <tr className="border-b border-gray-400 text-gray-700">
-                                    <th className="py-3 px-4">Sl.No</th>
+                                    <th className="py-3 px-4">Sr.No</th>
                                     <th className="py-3 px-4">Name</th>
                                     <th className="py-3 px-4">Email</th>
                                     <th className="py-3 px-4">Job Title</th>

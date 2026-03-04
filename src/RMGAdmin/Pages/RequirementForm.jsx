@@ -50,7 +50,7 @@ function RequirementForm() {
 
       if (response.data && response.data.data) {
         setHrUsers(response.data.data);
-        console.log("HR Users fetched:", response.data.data);
+        // console.log("HR Users fetched:", response.data.data);
       }
     } catch (error) {
       console.error("Error fetching HR users:", error);
@@ -135,7 +135,7 @@ function RequirementForm() {
 
       delete submitData.attachments;
 
-      console.log('Submitting data:', submitData);
+      // console.log('Submitting data:', submitData);
 
       const response = await axios.post(`${baseUrl}/offer`, submitData, {
         headers: {
@@ -239,7 +239,7 @@ function RequirementForm() {
                 >
                   <option value="">Select Priority</option>
                   <option value="Low">Low</option>
-                  <option value="Model">Medium</option>
+                  <option value="Medium">Medium</option>
                   <option value="High">High</option>
                   <option value="Critical">Critical</option>
                 </select>

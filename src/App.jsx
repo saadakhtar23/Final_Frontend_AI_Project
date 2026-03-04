@@ -141,8 +141,8 @@ const App = () => {
               <Route path="EyeButton" element={<EyeButton />} />
               <Route path="FilteredCandidate" element={<FilteredCandidate />} />
               <Route path="UnfilteredCandidate" element={<UnfilteredCandidate />} />
-              <Route path="SeeHistory" element={<SeeHistory />} />
-              <Route path="RMGSupportTickets" element={<RMGSupportTickets />} />
+              <Route path="AssignedRecruiters/SeeHistory" element={<SeeHistory />} />
+              <Route path="RMGRaiseTickets/RMGSupportTickets" element={<RMGSupportTickets />} />
               <Route path="RMGRaiseTickets" element={<RMGRaiseTickets />} />
             </Route>
           </Route>

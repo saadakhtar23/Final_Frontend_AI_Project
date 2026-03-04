@@ -24,7 +24,7 @@ export default function AssignedRecruiters() {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
                     },
                 });
-                console.log("hii", response.data);
+                // console.log("hii", response.data);
 
                 if (response.data.success && response.data.data) {
                     const mappedJobs = response.data.data.map((job, index) => ({
@@ -157,7 +157,7 @@ export default function AssignedRecruiters() {
                                 <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 w-[160px]">Deadline</th>
                                 <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 w-[160px]">Status</th>
                                 <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 w-[160px]">Assigned To</th>
-                                <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 w-[400px]">Action</th>
+                                <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700 w-[160px]">Action</th>
                             </tr>
                         </thead>
 
@@ -186,7 +186,7 @@ export default function AssignedRecruiters() {
                                                 <Trash2 size={16} />
                                             </button>
                                             <button
-                                                onClick={() => navigate('/RMGAdmin-Dashboard/SeeHistory', {
+                                                onClick={() => navigate('/RMGAdmin-Dashboard/AssignedRecruiters/SeeHistory', {
                                                     state: { jdData: job }
                                                 })}
                                                 className="px-3 py-1.5 bg-orange-500 text-white rounded text-sm hover:bg-orange-600 transition-colors whitespace-nowrap">
