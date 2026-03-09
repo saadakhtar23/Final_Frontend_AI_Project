@@ -1,151 +1,303 @@
-import React, { useState } from "react";
-import {
-    ChevronLeft,
-    ChevronRight,
-    Eye,
-} from "lucide-react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Eye, ChevronDown } from "lucide-react";
+import { useLocation, useParams } from "react-router-dom";
 import Pagination from "../../components/LandingPage/Pagination";
 import FilteredCandidate from "./FilteredCandidate";
 import UnfilteredCandidate from "./UnfilteredCandidate";
 
+async function fetchJDHistoryFromApi(jdId) {
+    const res = await fetch(`/api/jds/history/${jdId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to fetch JD history");
+    }
+    return res.json();
+}
+
+function getStatusPillClasses(status) {
+    const s = (status || "").toLowerCase();
+    if (s.includes("pending")) return "bg-orange-50 text-orange-600 border-orange-100";
+    if (s.includes("jd created")) return "bg-green-50 text-green-600 border-green-100";
+    if (s.includes("in progress")) return "bg-amber-50 text-amber-700 border-amber-100";
+    if (s.includes("closed") || s.includes("rejected")) return "bg-red-50 text-red-600 border-red-100";
+    return "bg-gray-50 text-gray-600 border-gray-200";
+}
+
+function getPriorityPillClasses(priority) {
+    const p = (priority || "").toLowerCase();
+    if (p.includes("high")) return "bg-red-50 text-red-600 border-red-100";
+    if (p.includes("medium")) return "bg-amber-50 text-amber-700 border-amber-100";
+    if (p.includes("low")) return "bg-green-50 text-green-600 border-green-100";
+    return "bg-gray-50 text-gray-600 border-gray-200";
+}
+
+function FitBitScore({ value = 0, variant = "green" }) {
+    const v = Math.max(0, Math.min(100, Number(value) || 0));
+    const color = variant === "red" ? "#ef4444" : "#22c55e";
+    const track = "#e5e7eb";
+
+    return (
+        <div className="flex items-center justify-end gap-2">
+            <span className={`text-sm font-semibold ${variant === "red" ? "text-red-600" : "text-green-600"}`}>
+                {v}%
+            </span>
+            <div
+                className="w-6 h-6 rounded-full"
+                style={{
+                    background: `conic-gradient(${color} ${v * 3.6}deg, ${track} 0deg)`,
+                    position: "relative",
+                }}
+            >
+                <div className="absolute inset-[3px] rounded-full bg-white" />
+            </div>
+        </div>
+    );
+}
+
+function DonutCard({ total = 0, filtered = 0, unfiltered = 0 }) {
+    const t = Number(total) || 0;
+    const f = Number(filtered) || 0;
+    const u = Number(unfiltered) || 0;
+
+    const circumference = 2 * Math.PI * 78;
+    const filteredPercent = t ? (f / t) * 100 : 0;
+    const unfilteredPercent = t ? (u / t) * 100 : 0;
+
+    const filteredDash = (filteredPercent / 100) * circumference;
+    const unfilteredDash = (unfilteredPercent / 100) * circumference;
+
+    return (
+        <div className="bg-white rounded-2xl p-5 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.12)]">
+            <div className="flex items-center justify-between gap-4">
+                <div className="relative w-48 h-48 shrink-0 flex items-center justify-center">
+                    <svg
+                        width="192"
+                        height="192"
+                        viewBox="0 0 176 176"
+                        className="absolute inset-0"
+                    >
+                        <defs>
+                            <linearGradient id="filteredGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#c4b5fd" />
+                                <stop offset="50%" stopColor="#8b5cf6" />
+                                <stop offset="100%" stopColor="#7c3aed" />
+                            </linearGradient>
+                        </defs>
+
+                        <circle
+                            cx="88"
+                            cy="88"
+                            r="78"
+                            fill="none"
+                            stroke="#d9d6fe"
+                            strokeWidth="14"
+                        />
+
+                        <circle
+                            cx="88"
+                            cy="88"
+                            r="78"
+                            fill="none"
+                            stroke="url(#filteredGradient)"
+                            strokeWidth="14"
+                            strokeLinecap="round"
+                            strokeDasharray={`${filteredDash} ${circumference}`}
+                            transform="rotate(-90 88 88)"
+                            style={{ transition: "stroke-dasharray 0.5s ease" }}
+                        />
+                    </svg>
+
+                    <div className="relative flex flex-col items-center justify-center text-center">
+                        <div className="text-xs text-gray-500 leading-4">Total Application</div>
+                        <div className="text-3xl font-bold text-indigo-700">{t}</div>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="flex flex-col items-center gap-3">
+                        <span className="w-9 h-3 rounded-full bg-indigo-500" />
+                        <div className="text-xs text-gray-500 leading-4">
+                            <p>Filtered</p>
+                            <div className="text-[11px] text-gray-400">Application ({f})</div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-3">
+                        <span className="w-9 h-3 rounded-full bg-indigo-200" />
+                        <div className="text-xs text-gray-500 leading-4">
+                            <p>Un-Filtered</p>
+                            <div className="text-[11px] text-gray-400">Application ({u})</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const SeeHistory = () => {
     const location = useLocation();
-    const { jdData } = location.state || {};
+    const params = useParams();
 
-    console.log("Received JD Data from Parent/Assigned Recruiter:", jdData);
+    const [jdData, setJdData] = useState(location.state?.jdData || null);
+    const [loading, setLoading] = useState(!location.state?.jdData);
+    const [error, setError] = useState("");
 
     const [showFilteredPopup, setShowFilteredPopup] = useState(false);
     const [showUnfilteredPopup, setShowUnfilteredPopup] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState(null);
 
-    const jdArray = jdData?.fullData?.jds || [];
-
-    const jobData = jdArray.map((jd, index) => {
-        const appliedCandidates = jd.raw?.appliedCandidates || [];
-        const filteredCands = appliedCandidates.filter(c => c.status === 'filtered');
-        const unfilteredCands = appliedCandidates.filter(c => c.status === 'unfiltered' || c.status !== 'filtered');
-
-        return {
-            id: jd.id || jd._id,
-            title: jdData?.fullData?.jobTitle || jdData?.title || "N/A",
-            jdId: `JD#${(jd.id || jd._id)?.slice(-4) || index}`,
-            assignedOn: new Date(jdData?.fullData?.createdAt).toLocaleDateString('en-CA') || "N/A",
-            dueDate: new Date(jdData?.fullData?.dueDate).toLocaleDateString('en-CA') || "N/A",
-            status: jdData?.fullData?.status || "N/A",
-            statusColor: jdData?.fullData?.status === 'JD created' ? 'text-green-600' :
-                jdData?.fullData?.status === 'In Progress' ? 'text-yellow-600' : 'text-red-600',
-            priority: jdData?.fullData?.priority || "N/A",
-            notes: jd.raw?.jobSummary || "No notes available",
-            totalApply: jd.totalApplicants || appliedCandidates.length || 0,
-            filtered: jd.filteredCount || filteredCands.length || 0,
-            unfiltered: jd.unfilteredCount || unfilteredCands.length || 0,
-            rawFilteredCandidates: jd.raw?.filteredCandidates || [],
-            rawUnfilteredCandidates: jd.raw?.unfilteredCandidates || [],
-            rawAppliedCandidates: appliedCandidates,
-            skills: jdData?.fullData?.skills || []
-        };
-    });
-
-    const finalJobData = jobData.length > 0 ? jobData : [{
-        id: 1,
-        title: "No Data Available",
-        jdId: "N/A",
-        assignedOn: "N/A",
-        dueDate: "N/A",
-        status: "N/A",
-        statusColor: "text-gray-600",
-        priority: "N/A",
-        notes: "No data available",
-        totalApply: 0,
-        filtered: 0,
-        unfiltered: 0,
-        rawFilteredCandidates: [],
-        rawUnfilteredCandidates: [],
-        rawAppliedCandidates: [],
-        skills: []
-    }];
-
+    const [activeTab, setActiveTab] = useState("filtered");
     const [currentJobIndex, setCurrentJobIndex] = useState(0);
     const [filteredPage, setFilteredPage] = useState(1);
     const [unfilteredPage, setUnfilteredPage] = useState(1);
 
-    const itemsPerPage = 4;
+    const itemsPerPage = 8;
+
+    useEffect(() => {
+        let mounted = true;
+
+        async function load() {
+            try {
+                if (location.state?.jdData) {
+                    setLoading(false);
+                    return;
+                }
+                const jdId = params.jdId;
+                if (!jdId) {
+                    setLoading(false);
+                    return;
+                }
+                setLoading(true);
+                const apiData = await fetchJDHistoryFromApi(jdId);
+                if (mounted) setJdData(apiData);
+            } catch (e) {
+                if (mounted) setError(e?.message || "Something went wrong");
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+
+        load();
+
+        return () => {
+            mounted = false;
+        };
+    }, [params.jdId, location.state?.jdData]);
+
+    const finalJobData = useMemo(() => {
+        const jdArray = jdData?.fullData?.jds || [];
+
+        const jobData = jdArray.map((jd, index) => {
+            const appliedCandidates = jd.raw?.appliedCandidates || [];
+            const filteredCands = appliedCandidates.filter((c) => c.status === "filtered");
+            const unfilteredCands = appliedCandidates.filter(
+                (c) => c.status === "unfiltered" || c.status !== "filtered"
+            );
+
+            return {
+                id: jd.id || jd._id,
+                title: jdData?.fullData?.jobTitle || jdData?.title || "N/A",
+                jdId: `JD#${(jd.id || jd._id)?.slice(-4) || index}`,
+                assignedOn: new Date(jdData?.fullData?.createdAt).toLocaleDateString("en-CA") || "N/A",
+                dueDate: new Date(jdData?.fullData?.dueDate).toLocaleDateString("en-CA") || "N/A",
+                status: jdData?.fullData?.status || "N/A",
+                priority: jdData?.fullData?.priority || "N/A",
+                notes: jd.raw?.jobSummary || "No notes available",
+                totalApply: jd.totalApplicants || appliedCandidates.length || 0,
+                filtered: jd.filteredCount || filteredCands.length || 0,
+                unfiltered: jd.unfilteredCount || unfilteredCands.length || 0,
+                rawFilteredCandidates: jd.raw?.filteredCandidates || [],
+                rawUnfilteredCandidates: jd.raw?.unfilteredCandidates || [],
+                rawAppliedCandidates: appliedCandidates,
+                skills: jdData?.fullData?.skills || [],
+            };
+        });
+
+        return jobData.length
+            ? jobData
+            : [
+                {
+                    id: 1,
+                    title: "No Data Available",
+                    jdId: "N/A",
+                    assignedOn: "N/A",
+                    dueDate: "N/A",
+                    status: "N/A",
+                    priority: "N/A",
+                    notes: "No data available",
+                    totalApply: 0,
+                    filtered: 0,
+                    unfiltered: 0,
+                    rawFilteredCandidates: [],
+                    rawUnfilteredCandidates: [],
+                    rawAppliedCandidates: [],
+                    skills: [],
+                },
+            ];
+    }, [jdData]);
+
     const currentJob = finalJobData[currentJobIndex];
 
-    const filteredCandidates = (currentJob.rawAppliedCandidates || [])
-        .filter(c => c.status === 'filtered')
-        .map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null,
-            appliedAt: candidate.appliedAt || null
-        }));
+    const filteredCandidates = useMemo(() => {
+        return (currentJob?.rawFilteredCandidates || []).map((fc, index) => {
+            const matched = (currentJob?.rawAppliedCandidates || []).find(
+                (ac) => ac._id === fc.candidate || ac.candidateId === fc.candidate
+            );
 
-    const unfilteredCandidates = (currentJob.rawAppliedCandidates || [])
-        .filter(c => c.status === 'unfiltered' || c.status !== 'filtered')
-        .map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null,
-            appliedAt: candidate.appliedAt || null
-        }));
+            return {
+                id: fc._id || index + 1,
+                name: matched?.name || "N/A",
+                email: matched?.email || "N/A",
+                phone: matched?.phone || "N/A",
+                skillsArr: currentJob?.skills || [],
+                percentage: fc.aiScore || 0,
+                aiExplanation: fc.aiExplanation || "No explanation available",
+                resume: matched?.resume || null,
+                appliedAt: matched?.appliedAt || null,
+                candidateRefId: fc.candidate || null,
+            };
+        });
+    }, [currentJob]);
 
-    const finalFilteredCandidates = filteredCandidates.length > 0 ? filteredCandidates :
-        (currentJob.rawFilteredCandidates || []).map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null
-        }));
+    const unfilteredCandidates = useMemo(() => {
+        return (currentJob?.rawUnfilteredCandidates || []).map((uc, index) => {
+            const matched = (currentJob?.rawAppliedCandidates || []).find(
+                (ac) => ac._id === uc.candidate || ac.candidateId === uc.candidate
+            );
 
-    const finalUnfilteredCandidates = unfilteredCandidates.length > 0 ? unfilteredCandidates :
-        (currentJob.rawUnfilteredCandidates || []).map((candidate, index) => ({
-            id: candidate._id || index + 1,
-            name: candidate.name || "N/A",
-            email: candidate.email || "N/A",
-            phone: candidate.phone || "N/A",
-            skills: currentJob.skills?.join(', ') || "N/A",
-            percentage: candidate.aiScore || 0,
-            aiExplanation: candidate.aiExplanation || "No explanation available",
-            resume: candidate.resume || null
-        }));
+            return {
+                id: uc._id || index + 1,
+                name: matched?.name || "N/A",
+                email: matched?.email || "N/A",
+                phone: matched?.phone || "N/A",
+                skillsArr: currentJob?.skills || [],
+                percentage: uc.aiScore || 0,
+                aiExplanation: uc.aiExplanation || "No explanation available",
+                resume: matched?.resume || null,
+                appliedAt: matched?.appliedAt || null,
+                candidateRefId: uc.candidate || null,
+            };
+        });
+    }, [currentJob]);
 
-    const filteredTotalPages = Math.ceil(finalFilteredCandidates.length / itemsPerPage) || 1;
+    const filteredTotalPages = Math.ceil(filteredCandidates.length / itemsPerPage) || 1;
     const filteredStartIndex = (filteredPage - 1) * itemsPerPage;
-    const filteredEndIndex = filteredStartIndex + itemsPerPage;
-    const currentFilteredCandidates = finalFilteredCandidates.slice(filteredStartIndex, filteredEndIndex);
+    const currentFilteredCandidates = filteredCandidates.slice(
+        filteredStartIndex,
+        filteredStartIndex + itemsPerPage
+    );
 
-    const unfilteredTotalPages = Math.ceil(finalUnfilteredCandidates.length / itemsPerPage) || 1;
+    const unfilteredTotalPages = Math.ceil(unfilteredCandidates.length / itemsPerPage) || 1;
     const unfilteredStartIndex = (unfilteredPage - 1) * itemsPerPage;
-    const unfilteredEndIndex = unfilteredStartIndex + itemsPerPage;
-    const currentUnfilteredCandidates = finalUnfilteredCandidates.slice(unfilteredStartIndex, unfilteredEndIndex);
-
-    const handlePrevious = () => {
-        setCurrentJobIndex((prev) => (prev === 0 ? finalJobData.length - 1 : prev - 1));
-        setFilteredPage(1);
-        setUnfilteredPage(1);
-    };
-
-    const handleNext = () => {
-        setCurrentJobIndex((prev) => (prev === finalJobData.length - 1 ? 0 : prev + 1));
-        setFilteredPage(1);
-        setUnfilteredPage(1);
-    };
+    const currentUnfilteredCandidates = unfilteredCandidates.slice(
+        unfilteredStartIndex,
+        unfilteredStartIndex + itemsPerPage
+    );
 
     const handleFilteredEyeClick = (candidate) => {
         setSelectedCandidate(candidate);
@@ -157,13 +309,34 @@ const SeeHistory = () => {
         setShowUnfilteredPopup(true);
     };
 
+    useEffect(() => {
+        if (activeTab === "filtered") setFilteredPage(1);
+        if (activeTab === "unfiltered") setUnfilteredPage(1);
+    }, [activeTab]);
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-2xl p-6 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.12)]">
+                <div className="text-gray-700 font-semibold">Loading...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white rounded-2xl p-6 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.12)]">
+                <div className="text-red-600 font-semibold">Error: {error}</div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {showFilteredPopup && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <FilteredCandidate
                         candidate={selectedCandidate}
-                        jobTitle={currentJob.title}
+                        jobTitle={currentJob?.title}
                         onClose={() => setShowFilteredPopup(false)}
                     />
                 </div>
@@ -173,241 +346,242 @@ const SeeHistory = () => {
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <UnfilteredCandidate
                         candidate={selectedCandidate}
-                        jobTitle={currentJob.title}
+                        jobTitle={currentJob?.title}
                         onClose={() => setShowUnfilteredPopup(false)}
                     />
                 </div>
             )}
 
-            <div className="bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl p-5">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <p className="text-gray-800 font-semibold text-lg">
-                            Job Title : <span className="font-normal">{currentJob.title}</span>
-                        </p>
-                    </div>
-                    {/* <div className="flex items-center gap-2">
-                        <button
-                            onClick={handlePrevious}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Previous Job"
-                        >
-                            <ChevronLeft className="w-5 h-5 cursor-pointer text-gray-600" />
-                        </button>
-                        <span className="text-sm text-gray-500">
-                            {currentJobIndex + 1} / {finalJobData.length}
-                        </span>
-                        <button
-                            onClick={handleNext}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Next Job"
-                        >
-                            <ChevronRight className="w-5 h-5 cursor-pointer text-gray-600" />
-                        </button>
-                    </div> */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="text-gray-900 font-semibold">
+                    Job Title: <span className="font-bold">{currentJob?.title}</span>
                 </div>
+
+                <button className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                    View Job Description
+                </button>
             </div>
 
-            <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl p-5 space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            {/* <p className="text-gray-700">
-                                JD ID : <span className="font-medium">{currentJob.jdId}</span>
-                            </p> */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 bg-white rounded-2xl p-5 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.12)]">
+                    <div className="font-bold text-gray-900">Job Summary</div>
+                    <p className="text-gray-600 text-sm mt-3 leading-relaxed max-h-36 overflow-auto pr-1">
+                        {currentJob?.notes}
+                    </p>
+                </div>
 
-                            <p className="text-gray-700">
-                                Assigned On : <span>{currentJob.assignedOn}</span>
-                            </p>
+                <div className="bg-white rounded-2xl p-5 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.12)]">
+                    <div className="font-bold text-gray-900">Overview</div>
 
-                            <p className="text-gray-700">
-                                Due Date : <span>{currentJob.dueDate}</span>
-                            </p>
-
-                            {/* <p className="text-gray-700">
-                                Documents :
-                                <span className="text-blue-600 cursor-pointer hover:underline ml-1">
-                                    [Download JD.pdf]
-                                </span>{" "}
-                                /
-                                <span className="text-blue-600 cursor-pointer hover:underline ml-1">
-                                    [Candidate List.xlsx]
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-6 mt-5 text-sm">
+                        <div>
+                            <div className="text-[11px] text-gray-400">Current Status</div>
+                            <div className="mt-2">
+                                <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${getStatusPillClasses(
+                                        currentJob?.status
+                                    )}`}
+                                >
+                                    {currentJob?.status}
                                 </span>
-                            </p> */}
+                            </div>
                         </div>
 
                         <div>
-                            <div className="flex space-x-3.5">
-                                <p className="text-gray-700 font-semibold mt-2">Current Status :</p>
-                                <p className={`font-semibold mt-2 ${currentJob.statusColor}`}>
-                                    {currentJob.status}
-                                </p>
+                            <div className="text-[11px] text-gray-400">Priority</div>
+                            <div className="mt-2">
+                                <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${getPriorityPillClasses(
+                                        currentJob?.priority
+                                    )}`}
+                                >
+                                    {currentJob?.priority}
+                                </span>
                             </div>
-                            <div className="flex space-x-3.5">
-                                <p className="text-gray-700 font-semibold mt-2">Priority :</p>
-                                <p className="text-gray-600 font-semibold mt-2">{currentJob.priority}</p>
-                            </div>
-                            <p className="text-gray-700 font-semibold mt-2">Notes :</p>
-                            <p className="text-gray-600 text-sm leading-tight border rounded-xl p-1 h-[120px] overflow-y-auto">
-                                {currentJob.notes}
-                            </p>
+                        </div>
 
+                        <div>
+                            <div className="text-[11px] text-gray-400">Assigned on</div>
+                            <div className="mt-2 text-sm font-semibold text-gray-900">{currentJob?.assignedOn}</div>
+                        </div>
+
+                        <div>
+                            <div className="text-[11px] text-gray-400">Due Date</div>
+                            <div className="mt-2 text-sm font-semibold text-red-600">{currentJob?.dueDate}</div>
                         </div>
                     </div>
                 </div>
 
-                <div className="lg:col-span-1 bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl space-y-4">
-                    <h2 className="text-lg font-semibold px-5 pt-4">Candidate</h2>
-                    <hr />
-                    <div className="px-5 space-y-4 pb-4">
-                        <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full w-fit">
-                            Total Apply : {currentJob.totalApply}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 bg-blue-600 rounded-full"></span>
-                            <p className="text-gray-700">Filtered Candidate: {finalFilteredCandidates.length}</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 bg-red-600 rounded-full"></span>
-                            <p className="text-gray-700">Unfiltered Candidate: {finalUnfilteredCandidates.length}</p>
-                        </div>
-                    </div>
-                </div>
+                <DonutCard
+                    total={currentJob?.totalApply}
+                    filtered={filteredCandidates.length}
+                    unfiltered={unfilteredCandidates.length}
+                />
             </div>
 
-            <div className="shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 rounded-xl space-y-4 bg-white">
-                <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-blue-600 rounded-full"></span>
-                    <p className="text-gray-800 font-semibold">Filtered Candidate: {finalFilteredCandidates.length}</p>
+            <div className="overflow-hidden">
+                <div className="px-5 pt-4">
+                    <div className="flex items-center gap-8">
+                        <button
+                            onClick={() => setActiveTab("filtered")}
+                            className={`text-sm font-semibold pb-3 ${activeTab === "filtered" ? "text-gray-900 border-b-3 border-[#251851]" : "text-gray-400"
+                                }`}
+                        >
+                            Filtered Candidates
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab("unfiltered")}
+                            className={`text-sm font-semibold pb-3 ${activeTab === "unfiltered" ? "text-gray-900 border-b-3 border-[#251851]" : "text-gray-400"
+                                }`}
+                        >
+                            Un-Filtered Candidates
+                        </button>
+                    </div>
                 </div>
 
-                <div className="bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left min-w-[900px]">
-                            <thead>
-                                <tr className="border-b border-gray-400 text-gray-700">
-                                    <th className="py-3 px-4">Sl.No</th>
-                                    <th className="py-3 px-4">Name</th>
-                                    <th className="py-3 px-4">Email</th>
-                                    <th className="py-3 px-4">Job Title</th>
-                                    <th className="py-3 px-4">Skills</th>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4">Action</th>
-                                </tr>
-                            </thead>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[980px] text-left border rounded-2xl border-purple-300">
+                        <thead>
+                            <tr className="text-xs font-semibold text-gray-500 bg-indigo-50/40">
+                                <th className="py-4 px-5">
+                                    <div className="inline-flex items-center gap-1">
+                                        Serial No. <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5">
+                                    <div className="inline-flex items-center gap-1">
+                                        Job Title <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5">
+                                    <div className="inline-flex items-center gap-1">
+                                        Name <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5">
+                                    <div className="inline-flex items-center gap-1">
+                                        Email <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5">
+                                    <div className="inline-flex items-center gap-1">
+                                        Skills <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5 text-right">
+                                    <div className="inline-flex items-center gap-1 justify-end w-full">
+                                        FitBit Score <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                    </div>
+                                </th>
+                                <th className="py-4 px-5 text-center">Action</th>
+                            </tr>
+                        </thead>
 
-                            <tbody>
-                                {currentFilteredCandidates.length > 0 ? (
-                                    currentFilteredCandidates.map((candidate, idx) => (
-                                        <tr key={candidate.id} className="border-b border-gray-400 text-gray-700">
-                                            <td className="py-3 px-4">{filteredStartIndex + idx + 1}.</td>
-                                            <td className="py-3 px-4">{candidate.name}</td>
-                                            <td className="py-3 px-4">{candidate.email}</td>
-                                            <td className="py-3 px-4">{currentJob.title}</td>
-                                            <td className="py-3 px-4">{candidate.skills}</td>
-
-                                            <td className="py-3 px-2 flex items-center gap-2">
-                                                <div className="w-24 bg-gray-200 rounded-full h-2">
-                                                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${candidate.percentage}%` }}></div>
+                        <tbody className="text-sm text-gray-800">
+                            {activeTab === "filtered" ? (
+                                currentFilteredCandidates.length ? (
+                                    currentFilteredCandidates.map((c, idx) => (
+                                        <tr key={c.id} className="border-t border-gray-300">
+                                            <td className="py-4 px-5">{filteredStartIndex + idx + 1}</td>
+                                            <td className="py-4 px-5">{currentJob?.title}</td>
+                                            <td className="py-4 px-5">{c.name}</td>
+                                            <td className="py-4 px-5">{c.email}</td>
+                                            <td className="py-4 px-5">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(c.skillsArr || []).slice(0, 3).map((s) => (
+                                                        <span key={s} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                                            {s}
+                                                        </span>
+                                                    ))}
+                                                    {(c.skillsArr || []).length > 3 && (
+                                                        <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                                            +{(c.skillsArr || []).length - 3}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <span className="text-blue-600 text-sm">{candidate.percentage}%</span>
                                             </td>
-
-                                            <td className="py-3 px-2">
-                                                <button
-                                                    onClick={() => handleFilteredEyeClick(candidate)}
-                                                    className="p-2 border rounded-lg hover:bg-gray-100"
-                                                >
-                                                    <Eye className="w-5 h-5 text-blue-600" />
-                                                </button>
+                                            <td className="py-4 px-5">
+                                                <FitBitScore value={c.percentage} variant="green" />
+                                            </td>
+                                            <td className="py-4 px-5">
+                                                <div className="flex items-center justify-center">
+                                                    <button
+                                                        onClick={() => handleFilteredEyeClick(c)}
+                                                        className="w-8 h-8 inline-flex items-center justify-center rounded-full border border-indigo-200 hover:bg-indigo-50"
+                                                        title="View"
+                                                    >
+                                                        <Eye className="w-4 h-4 text-indigo-700" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="7" className="py-8 text-center text-gray-500">
+                                        <td colSpan={7} className="py-10 text-center text-gray-500">
                                             No filtered candidates available
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <Pagination
-                        currentPage={filteredPage}
-                        totalPages={filteredTotalPages}
-                        onPageChange={setFilteredPage}
-                    />
-                </div>
-            </div>
-
-            <div className="shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 rounded-xl space-y-4 bg-white">
-                <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-red-600 rounded-full"></span>
-                    <p className="text-gray-800 font-semibold">Unfiltered Candidate: {finalUnfilteredCandidates.length}</p>
-                </div>
-
-                <div className="bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left min-w-[900px]">
-                            <thead>
-                                <tr className="border-b border-gray-400 text-gray-700">
-                                    <th className="py-3 px-4">Sl.No</th>
-                                    <th className="py-3 px-4">Name</th>
-                                    <th className="py-3 px-4">Email</th>
-                                    <th className="py-3 px-4">Job Title</th>
-                                    <th className="py-3 px-4">Skills</th>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4">Action</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {currentUnfilteredCandidates.length > 0 ? (
-                                    currentUnfilteredCandidates.map((candidate, idx) => (
-                                        <tr key={candidate.id} className="border-b border-gray-400 text-gray-700">
-                                            <td className="py-3 px-4">{unfilteredStartIndex + idx + 1}.</td>
-                                            <td className="py-3 px-4">{candidate.name}</td>
-                                            <td className="py-3 px-4">{candidate.email}</td>
-                                            <td className="py-3 px-4">{currentJob.title}</td>
-                                            <td className="py-3 px-4">{candidate.skills}</td>
-
-                                            <td className="py-3 px-2 flex items-center gap-2">
-                                                <div className="w-24 bg-gray-200 rounded-full h-2">
-                                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: `${candidate.percentage}%` }}></div>
-                                                </div>
-                                                <span className="text-red-600 text-sm">{candidate.percentage}%</span>
-                                            </td>
-
-                                            <td className="py-3 px-2">
+                                )
+                            ) : currentUnfilteredCandidates.length ? (
+                                currentUnfilteredCandidates.map((c, idx) => (
+                                    <tr key={c.id} className="border-t border-gray-300">
+                                        <td className="py-4 px-5">{unfilteredStartIndex + idx + 1}</td>
+                                        <td className="py-4 px-5">{currentJob?.title}</td>
+                                        <td className="py-4 px-5">{c.name}</td>
+                                        <td className="py-4 px-5">{c.email}</td>
+                                        <td className="py-4 px-5">
+                                            <div className="flex flex-wrap gap-2">
+                                                {(c.skillsArr || []).slice(0, 3).map((s) => (
+                                                    <span key={s} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                                        {s}
+                                                    </span>
+                                                ))}
+                                                {(c.skillsArr || []).length > 3 && (
+                                                    <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                                        +{(c.skillsArr || []).length - 3}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <FitBitScore value={c.percentage} variant="red" />
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center justify-center">
                                                 <button
-                                                    onClick={() => handleUnfilteredEyeClick(candidate)}
-                                                    className="p-2 border rounded-lg hover:bg-gray-100"
+                                                    onClick={() => handleUnfilteredEyeClick(c)}
+                                                    className="w-8 h-8 inline-flex items-center justify-center rounded-full border border-indigo-200 hover:bg-indigo-50"
+                                                    title="View"
                                                 >
-                                                    <Eye className="w-5 h-5 text-red-600" />
+                                                    <Eye className="w-4 h-4 text-indigo-700" />
                                                 </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="7" className="py-8 text-center text-gray-500">
-                                            No unfiltered candidates available
+                                            </div>
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={7} className="py-10 text-center text-gray-500">
+                                        No unfiltered candidates available
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                    <Pagination
-                        currentPage={unfilteredPage}
-                        totalPages={unfilteredTotalPages}
-                        onPageChange={setUnfilteredPage}
-                    />
+                <div className="py-4 flex items-center justify-center">
+                    {activeTab === "filtered" ? (
+                        <Pagination currentPage={filteredPage} totalPages={filteredTotalPages} onPageChange={setFilteredPage} />
+                    ) : (
+                        <Pagination
+                            currentPage={unfilteredPage}
+                            totalPages={unfilteredTotalPages}
+                            onPageChange={setUnfilteredPage}
+                        />
+                    )}
                 </div>
             </div>
         </div>

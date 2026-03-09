@@ -83,6 +83,9 @@ function RMGManagement() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedRecruiter, setSelectedRecruiter] = useState(null);
 
+  // disable Add button when at least one RMG exists
+  const disableAdd = recruiters.length >= 1 && !showAddForm;
+
   const itemsPerPage = 5;
 
   const filteredRecruiters = recruiters.filter(recruiter =>
@@ -296,7 +299,9 @@ function RMGManagement() {
                 <div className="flex gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                    disabled={disableAdd}
+                    title={disableAdd ? 'An RMG already exists' : ''}
+                    className={`${disableAdd ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-800'} flex-1 sm:flex-none px-6 py-2.5 rounded-lg transition-colors font-medium`}
                   >
                     {showAddForm ? 'Hide Form' : 'Add New'}
                   </button>

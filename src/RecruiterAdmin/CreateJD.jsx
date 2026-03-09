@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, X, Copy, Check, Linkedin, Edit3, Save } from 'lucide-react';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
@@ -32,6 +32,8 @@ function CreateJD() {
         benefits: [],
         additionalInfo: ''
     });
+
+    const [keyRespDraft, setKeyRespDraft] = useState('');
 
     useEffect(() => {
         if (location.state?.offerId) {
@@ -93,7 +95,6 @@ function CreateJD() {
 
             if (response.data.success) {
                 setGeneratedJD(response.data.jd);
-                //const generatedUrl = `${window.location.origin}/Candidate-Dashboard/Alldjs/${response.data.jd._id}`;
                 const generatedUrl = `http://103.192.198.240/JDDetail/${response.data.jd._id}`;
                 setJdUrl(generatedUrl);
                 setShowSuccessPopup(true);
@@ -268,13 +269,61 @@ function CreateJD() {
         }
     };
 
-    const shareText = getFullJDContent();
+    const companyInitials = useMemo(() => {
+        const name = (formData.companyName || '').trim();
+        if (!name) return 'NS';
+        const parts = name.split(/\s+/).filter(Boolean);
+        const a = parts[0]?.[0] || '';
+        const b = parts[1]?.[0] || '';
+        return (a + b).toUpperCase() || 'NS';
+    }, [formData.companyName]);
+
+    const keyRespItems = useMemo(() => {
+        return (formData.keyResponsibilities || '')
+            .split(/,|\n/)
+            .map(s => s.trim())
+            .filter(Boolean);
+    }, [formData.keyResponsibilities]);
+
+    const setKeyRespItems = (items) => {
+        setFormData(prev => ({
+            ...prev,
+            keyResponsibilities: items.join(', ')
+        }));
+    };
+
+    const addKeyRespItem = (raw) => {
+        const v = (raw || '').trim();
+        if (!v) return;
+        if (keyRespItems.some(x => x.toLowerCase() === v.toLowerCase())) return;
+        setKeyRespItems([...keyRespItems, v]);
+    };
+
+    const removeKeyRespItem = (idx) => {
+        setKeyRespItems(keyRespItems.filter((_, i) => i !== idx));
+    };
+
+    const onKeyRespKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addKeyRespItem(keyRespDraft);
+            setKeyRespDraft('');
+        }
+        if (e.key === 'Backspace' && !keyRespDraft && keyRespItems.length) {
+            removeKeyRespItem(keyRespItems.length - 1);
+        }
+    };
+
+    const [showFullSummary, setShowFullSummary] = useState(false);
+    const summaryText = generatedJD?.jobSummary || '';
+    const summaryShort = summaryText.length > 260 ? `${summaryText.slice(0, 260)}...` : summaryText;
+
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen ">
             {(creating || saving) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0  backdrop-blur-sm"></div>
+                    <div className="absolute inset-0 backdrop-blur-sm bg-black/10"></div>
                     <div className="relative z-10">
                         <SpinLoader />
                     </div>
@@ -411,362 +460,521 @@ function CreateJD() {
             )}
 
             <div className="">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Job Description</h1>
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                        Create Job Description
+                    </h1>
 
-                <form onSubmit={handleCreate}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className='hidden'>
-                                <label htmlFor="offerId" className="block text-sm font-medium mb-2">
-                                    Offer ID <span className="text-red-500">*</span>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={handleShareLinkClick}
+                            disabled={!generatedJD || !jdUrl}
+                            className={`h-9 px-4 rounded-lg border text-sm font-medium transition-colors
+                                ${(!generatedJD || !jdUrl)
+                                    ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400 bg-white'
+                                    : 'border-[#6D5EF8]/40 text-[#5B4BFF] bg-white hover:bg-[#F0EFFF]'
+                                }`}
+                        >
+                            Share Link
+                        </button>
+
+                        <button
+                            form="create-jd-form"
+                            type="submit"
+                            disabled={creating || !formData.offerId || generatedJD}
+                            className={`h-9 px-5 rounded-lg text-sm font-medium shadow-sm transition-colors
+                                ${(creating || !formData.offerId || generatedJD)
+                                    ? 'opacity-50 cursor-not-allowed bg-[#5B4BFF] text-white'
+                                    : 'bg-[#5B4BFF] text-white hover:bg-[#4A3CF0]'
+                                }`}
+                        >
+                            {creating ? 'Creating...' : 'Create'}
+                        </button>
+                    </div>
+                </div>
+
+                <form id="create-jd-form" onSubmit={handleCreate} className="space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                        <div className="hidden">
+                            <label htmlFor="offerId" className="block text-sm font-medium mb-2">
+                                Offer ID <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="offerId"
+                                name="offerId"
+                                value={formData.offerId}
+                                onChange={handleInputChange}
+                                readOnly
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-gray-50 cursor-not-allowed"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                    Company Name
                                 </label>
-                                <input
-                                    type="text"
-                                    id="offerId"
-                                    name="offerId"
-                                    value={formData.offerId}
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        id="companyName"
+                                        name="companyName"
+                                        value={formData.companyName}
+                                        onChange={handleInputChange}
+                                        readOnly
+                                        className="w-full h-11 px-4 pr-10 border border-gray-200 rounded-xl
+                                            outline-none text-sm bg-gray-50 cursor-not-allowed"
+                                    />
+                                    <ChevronDown
+                                        size={18}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                    Key Responsibilities
+                                </label>
+
+                                <div className="min-h-11 w-full px-3 py-2 border border-gray-200 rounded-xl bg-white flex flex-wrap gap-2 items-center">
+                                    {keyRespItems.map((tag, idx) => (
+                                        <span
+                                            key={`${tag}-${idx}`}
+                                            className="inline-flex items-center gap-2 h-7 px-3 rounded-full bg-[#F0EFFF] text-[#3D2FFF] text-xs font-medium"
+                                        >
+                                            {tag}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeKeyRespItem(idx)}
+                                                className="text-[#3D2FFF]/70 hover:text-[#3D2FFF]"
+                                                aria-label="Remove"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </span>
+                                    ))}
+
+                                    <input
+                                        value={keyRespDraft}
+                                        onChange={(e) => setKeyRespDraft(e.target.value)}
+                                        onKeyDown={onKeyRespKeyDown}
+                                        placeholder={keyRespItems.length ? 'Add more...' : 'Type and press Enter'}
+                                        className="flex-1 min-w-[160px] outline-none text-sm placeholder:text-gray-400"
+                                    />
+                                </div>
+
+                                <textarea
+                                    name="keyResponsibilities"
+                                    value={formData.keyResponsibilities}
                                     onChange={handleInputChange}
-                                    placeholder="Select from JD page table"
+                                    className="hidden"
                                     readOnly
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm bg-gray-50 cursor-not-allowed"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="companyName" className="block text-sm font-medium mb-2">
-                                    Company Name <span className="text-red-500">*</span>
+                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                    Qualifications
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        id="qualifications"
+                                        name="qualifications"
+                                        value={formData.qualifications}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter Required Qualifications"
+                                        className="w-full h-11 px-4 pr-10 border border-gray-200 rounded-xl
+                                            outline-none text-sm bg-white focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
+                                    />
+                                    <ChevronDown
+                                        size={18}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                    Benefits
                                 </label>
                                 <input
                                     type="text"
-                                    id="companyName"
-                                    name="companyName"
-                                    value={formData.companyName}
-                                    onChange={handleInputChange}
-                                    readOnly
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm bg-gray-50 cursor-not-allowed"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label htmlFor="keyResponsibilities" className="block text-sm font-medium mb-2">
-                                    Key Responsibilities
-                                </label>
-                                <textarea
-                                    id="keyResponsibilities"
-                                    name="keyResponsibilities"
-                                    value={formData.keyResponsibilities}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter Key Responsibilities (separate with commas or new lines)"
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm resize-none"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label htmlFor="qualifications" className="block text-sm font-medium mb-2">
-                                    Qualifications
-                                </label>
-                                <textarea
-                                    id="qualifications"
-                                    name="qualifications"
-                                    value={formData.qualifications}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter Required Qualifications"
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm resize-none"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label htmlFor="benefits" className="block text-sm font-medium mb-2">
-                                    Benefits
-                                </label>
-                                <textarea
                                     id="benefits"
                                     name="benefits"
                                     value={formData.benefits}
                                     onChange={handleInputChange}
-                                    placeholder="Enter Benefits (separate with commas or new lines)"
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm resize-none"
+                                    placeholder="Enter benefits"
+                                    className="w-full h-11 px-4 border border-gray-200 rounded-xl
+                                        outline-none text-sm bg-white focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
                                 />
                             </div>
 
-                            <div className="md:col-span-2">
-                                <label htmlFor="additionalNotes" className="block text-sm font-medium mb-2">
-                                    Additional Notes
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                    About This Company
                                 </label>
-                                <textarea
+                                <input
+                                    type="text"
                                     id="additionalNotes"
                                     name="additionalNotes"
                                     value={formData.additionalNotes}
                                     onChange={handleInputChange}
-                                    placeholder="Enter any additional notes or requirements"
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                        focus:ring-2 focus:ring-gray-900 focus:border-transparent 
-                                        outline-none transition-all text-sm resize-none"
+                                    placeholder="Enter about company"
+                                    className="w-full h-11 px-4 border border-gray-200 rounded-xl
+                                        outline-none text-sm bg-white focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
                                 />
                             </div>
                         </div>
-
-                        <div className="flex justify-center gap-4 mt-8">
-                            <button
-                                type="submit"
-                                disabled={creating || !formData.offerId || generatedJD}
-                                className={`px-12 py-3 bg-black text-white rounded-xl font-medium 
-        transition-colors shadow-sm ${creating || !formData.offerId || generatedJD
-                                        ? 'opacity-50 cursor-not-allowed'
-                                        : 'hover:bg-gray-800'
-                                    }`}
-                            >
-                                {creating ? 'Creating...' : 'Create'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleShareLinkClick}
-                                disabled={!generatedJD || !jdUrl}
-                                className={`px-12 py-3 bg-black text-white rounded-xl font-medium 
-        transition-colors shadow-sm ${!generatedJD || !jdUrl
-                                        ? 'opacity-50 cursor-not-allowed'
-                                        : 'hover:bg-gray-800'}`}
-                            >
-                                Share Link
-                            </button>
-                        </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 pb-6">
-                        <div className="px-6 sm:px-8 py-4 border-b border-gray-300 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold text-gray-900">Job Description</h2>
-                            {generatedJD && isEditing && (
-                                <button
-                                    type="button"
-                                    onClick={handleSaveEdit}
-                                    disabled={saving}
-                                    className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium 
-                transition-colors shadow-sm ${saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
-                                >
-                                    <Save size={16} />
-                                    {saving ? 'Saving...' : 'Save'}
-                                </button>
-                            )}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-[#5B4BFF] text-white flex items-center justify-center font-semibold">
+                                    {companyInitials}
+                                </div>
+                                <div className="leading-tight">
+                                    <div className="font-semibold text-gray-900">
+                                        {location.state?.jobTitle || 'Developer'}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {formData.companyName || '—'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {generatedJD && !isEditing && (
+                                    <button
+                                        type="button"
+                                        onClick={handleEditClick}
+                                        className="h-9 px-3 rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 text-sm font-medium flex items-center gap-2"
+                                    >
+                                        <Edit3 size={16} />
+                                        Edit
+                                    </button>
+                                )}
+
+                                {generatedJD && isEditing && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveEdit}
+                                            disabled={saving}
+                                            className={`h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2
+                                                ${saving ? 'opacity-50 cursor-not-allowed bg-green-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                                        >
+                                            <Save size={16} />
+                                            {saving ? 'Saving...' : 'Save'}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelEdit}
+                                            className="h-9 px-3 rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 text-sm font-medium flex items-center gap-2"
+                                        >
+                                            <X size={16} />
+                                            Cancel
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="bg-gray-50 min-h-[200px] p-6">
-                            {generatedJD ? (
-                                isEditing ? (
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="font-semibold text-gray-900 mb-2 block">Job Summary</label>
-                                            <textarea
-                                                value={editableJD.jobSummary}
-                                                onChange={(e) => handleEditableChange('jobSummary', e.target.value)}
-                                                rows={3}
-                                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                                    focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                                                    outline-none transition-all text-sm resize-none"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <label className="font-semibold text-gray-900">Responsibilities</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAddArrayItem('responsibilities')}
-                                                    className="text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    + Add Item
-                                                </button>
-                                            </div>
-                                            {editableJD.responsibilities.map((item, index) => (
-                                                <div key={index} className="flex gap-2 mb-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item}
-                                                        onChange={(e) => handleArrayFieldChange('responsibilities', index, e.target.value)}
-                                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-xl 
-                                                            focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                                                            outline-none transition-all text-sm"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveArrayItem('responsibilities', index)}
-                                                        className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <label className="font-semibold text-gray-900">Requirements</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAddArrayItem('requirements')}
-                                                    className="text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    + Add Item
-                                                </button>
-                                            </div>
-                                            {editableJD.requirements.map((item, index) => (
-                                                <div key={index} className="flex gap-2 mb-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item}
-                                                        onChange={(e) => handleArrayFieldChange('requirements', index, e.target.value)}
-                                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-xl 
-                                                            focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                                                            outline-none transition-all text-sm"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveArrayItem('requirements', index)}
-                                                        className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <label className="font-semibold text-gray-900">Benefits</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAddArrayItem('benefits')}
-                                                    className="text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    + Add Item
-                                                </button>
-                                            </div>
-                                            {editableJD.benefits.map((item, index) => (
-                                                <div key={index} className="flex gap-2 mb-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item}
-                                                        onChange={(e) => handleArrayFieldChange('benefits', index, e.target.value)}
-                                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-xl 
-                                                            focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                                                            outline-none transition-all text-sm"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveArrayItem('benefits', index)}
-                                                        className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div>
-                                            <label className="font-semibold text-gray-900 mb-2 block">Additional Information</label>
-                                            <textarea
-                                                value={editableJD.additionalInfo}
-                                                onChange={(e) => handleEditableChange('additionalInfo', e.target.value)}
-                                                rows={3}
-                                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl 
-                                                    focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                                                    outline-none transition-all text-sm resize-none"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {generatedJD.jobSummary && (
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-2">Job Summary</h3>
-                                                <p className="text-sm text-gray-700">{generatedJD.jobSummary}</p>
-                                            </div>
-                                        )}
-                                        {generatedJD.responsibilities && generatedJD.responsibilities.length > 0 && (
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-2">Responsibilities</h3>
-                                                <ul className="list-disc list-inside text-sm text-gray-700">
-                                                    {generatedJD.responsibilities.map((item, index) => (
-                                                        <li key={index}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {generatedJD.requirements && generatedJD.requirements.length > 0 && (
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-2">Requirements</h3>
-                                                <ul className="list-disc list-inside text-sm text-gray-700">
-                                                    {generatedJD.requirements.map((item, index) => (
-                                                        <li key={index}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {generatedJD.benefits && generatedJD.benefits.length > 0 && (
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-2">Benefits</h3>
-                                                <ul className="list-disc list-inside text-sm text-gray-700">
-                                                    {generatedJD.benefits.map((item, index) => (
-                                                        <li key={index}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {generatedJD.additionalInfo && (
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-2">Additional Information</h3>
-                                                <p className="text-sm text-gray-700">{generatedJD.additionalInfo}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            ) : (
-                                <div className="flex items-center justify-center h-full min-h-[150px]">
-                                    <p className="text-sm text-center text-gray-500">
+                        <div className="p-5 bg-white">
+                            {!generatedJD ? (
+                                <div className="rounded-xl bg-[#F6F7FF] border border-[#E9EAFE] min-h-[280px] flex items-center justify-center">
+                                    <p className="text-sm text-gray-500">
                                         Job description will appear here after creation
                                     </p>
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-center mt-6">
-                            {!isEditing ? (
-                                <button
-                                    type="button"
-                                    onClick={handleEditClick}
-                                    disabled={!generatedJD}
-                                    className={`flex items-center gap-2 px-12 py-3 bg-black text-white rounded-xl font-medium 
-                transition-colors shadow-sm ${!generatedJD
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-gray-800'
-                                        }`}
-                                >
-                                    <Edit3 size={16} />
-                                    Edit JD
-                                </button>
                             ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleCancelEdit}
-                                    className="flex items-center gap-2 px-12 py-3 bg-gray-500 text-white rounded-xl font-medium 
-                transition-colors shadow-sm hover:bg-gray-600"
-                                >
-                                    <X size={16} />
-                                    Cancel
-                                </button>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                                        <div className="p-5 space-y-6 relative max-h-[560px] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-4">
+                                            <div className="absolute right-0 top-0 h-full w-1 bg-[#5B4BFF] opacity-80"></div>
+
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M7 7h10M7 11h10M7 15h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                            <path d="M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 className="font-semibold text-gray-900">Job Summary</h3>
+                                                </div>
+
+                                                {isEditing ? (
+                                                    <textarea
+                                                        value={editableJD.jobSummary}
+                                                        onChange={(e) => handleEditableChange('jobSummary', e.target.value)}
+                                                        rows={4}
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-sm
+                                                            focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40 resize-none"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-600 leading-relaxed">
+                                                        {showFullSummary ? summaryText : summaryShort}{' '}
+                                                        {summaryText.length > 260 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowFullSummary(v => !v)}
+                                                                className="text-[#5B4BFF] font-medium hover:underline"
+                                                            >
+                                                                {showFullSummary ? 'See less' : 'See More...'}
+                                                            </button>
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M12 3 2 8l10 5 10-5-10-5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                                                            <path d="M6 10v6c0 1.5 2.7 3 6 3s6-1.5 6-3v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 className="font-semibold text-gray-900">Qualification</h3>
+                                                </div>
+
+                                                {isEditing ? (
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs text-gray-500">Requirements</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAddArrayItem('requirements')}
+                                                                className="text-xs font-medium text-[#5B4BFF] hover:underline"
+                                                            >
+                                                                + Add
+                                                            </button>
+                                                        </div>
+
+                                                        {editableJD.requirements.map((item, index) => (
+                                                            <div key={index} className="flex gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item}
+                                                                    onChange={(e) => handleArrayFieldChange('requirements', index, e.target.value)}
+                                                                    className="flex-1 h-10 px-4 border border-gray-200 rounded-xl outline-none text-sm
+                                                                        focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveArrayItem('requirements', index)}
+                                                                    className="h-10 w-10 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <ul className="space-y-2">
+                                                        {(generatedJD.requirements || []).map((item, idx) => (
+                                                            <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
+                                                                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#5B4BFF] flex-shrink-0"></span>
+                                                                <span>{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                            <path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 className="font-semibold text-gray-900">Responsibilities</h3>
+                                                </div>
+
+                                                {isEditing ? (
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs text-gray-500">Responsibilities</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAddArrayItem('responsibilities')}
+                                                                className="text-xs font-medium text-[#5B4BFF] hover:underline"
+                                                            >
+                                                                + Add
+                                                            </button>
+                                                        </div>
+
+                                                        {editableJD.responsibilities.map((item, index) => (
+                                                            <div key={index} className="flex gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item}
+                                                                    onChange={(e) => handleArrayFieldChange('responsibilities', index, e.target.value)}
+                                                                    className="flex-1 h-10 px-4 border border-gray-200 rounded-xl outline-none text-sm
+                                                                        focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveArrayItem('responsibilities', index)}
+                                                                    className="h-10 w-10 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <ul className="space-y-2">
+                                                        {(generatedJD.responsibilities || []).map((item, idx) => (
+                                                            <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
+                                                                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#5B4BFF] flex-shrink-0"></span>
+                                                                <span>{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+
+
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                            <path
+                                                                d="M20 7H4v13h16V7Z"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                            <path
+                                                                d="M12 7v13"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                                strokeLinecap="round"
+                                                            />
+                                                            <path
+                                                                d="M4 12h16"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                                strokeLinecap="round"
+                                                            />
+                                                            <path
+                                                                d="M7.5 7c-1.38 0-2.5-1.12-2.5-2.5S6.12 2 7.5 2C9.5 2 12 4.5 12 7c0-2.5 2.5-5 4.5-5C17.88 2 19 3.12 19 4.5S17.88 7 16.5 7"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 className="font-semibold text-gray-900">Benefits</h3>
+                                                </div>
+
+                                                {isEditing ? (
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs text-gray-500">Benefits</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAddArrayItem('benefits')}
+                                                                className="text-xs font-medium text-[#5B4BFF] hover:underline"
+                                                            >
+                                                                + Add
+                                                            </button>
+                                                        </div>
+
+                                                        {editableJD.benefits.map((item, index) => (
+                                                            <div key={index} className="flex gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item}
+                                                                    onChange={(e) => handleArrayFieldChange('benefits', index, e.target.value)}
+                                                                    className="flex-1 h-10 px-4 border border-gray-200 rounded-xl outline-none text-sm
+              focus:ring-2 focus:ring-[#5B4BFF]/20 focus:border-[#5B4BFF]/40"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveArrayItem('benefits', index)}
+                                                                    className="h-10 w-10 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <ul className="space-y-2">
+                                                        {(generatedJD.benefits || []).map((item, idx) => (
+                                                            <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
+                                                                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#5B4BFF] flex-shrink-0"></span>
+                                                                <span>{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                        <path d="M4 5h16v14H4V5Z" stroke="currentColor" strokeWidth="2" />
+                                                        <path d="M8 9h8M8 13h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                    </svg>
+                                                </div>
+                                                <h3 className="font-semibold text-gray-900">Overview</h3>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="text-sm">
+                                                    <div className="text-xs text-gray-500 mb-1">Employment Type</div>
+                                                    <div className="font-medium text-gray-900">Full Time</div>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <div className="text-xs text-gray-500 mb-1">Experience</div>
+                                                    <div className="font-medium text-gray-900">—</div>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <div className="text-xs text-gray-500 mb-1">Location</div>
+                                                    <div className="font-medium text-gray-900">—</div>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <div className="text-xs text-gray-500 mb-1">Timeline</div>
+                                                    <div className="font-medium text-gray-900">—</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                        <path d="M3 21h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                        <path d="M5 21V7l7-4 7 4v14" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                                                        <path d="M9 21v-8h6v8" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                                                    </svg>
+                                                </div>
+                                                <h3 className="font-semibold text-gray-900">About The Company</h3>
+                                            </div>
+
+                                            <p className="text-sm text-gray-600 leading-relaxed">
+                                                {formData.additionalNotes || '—'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>

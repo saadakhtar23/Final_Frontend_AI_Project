@@ -1,16 +1,26 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, SlidersHorizontal, Ticket, Clock, FileCheck, Trash2, ChevronDown } from 'lucide-react';
-import Pagination from '../../components/LandingPage/Pagination';
-import axios from 'axios';
-import { baseUrl } from '../../utils/ApiConstants';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Clock, Eye, FileCheck, Search, Ticket, X } from "lucide-react";
+import axios from "axios";
+import Pagination from "../../components/LandingPage/Pagination";
+import { baseUrl } from "../../utils/ApiConstants";
+import icon1 from "../../img/TT.png";
+import icon2 from "../../img/PT.png";
+import icon3 from "../../img/CT.png"
+import card1 from "../../img/ISL.png"
+import card2 from "../../img/TFL.png"
+import card3 from "../../img/ISL.png"
+import RMGSupportTickets from "./RMGSupportTickets";
 
 const RMGRaiseTickets = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('All');
+    const [isRaiseOpen, setIsRaiseOpen] = useState(false);
+    const [activeTab] = useState("All");
     const [selectedTicket, setSelectedTicket] = useState(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchId, setSearchId] = useState('');
+    const [searchId, setSearchId] = useState("");
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -19,386 +29,389 @@ const RMGRaiseTickets = () => {
             setLoading(true);
             try {
                 const token = localStorage.getItem("token");
-                const res = await axios.get(`${baseUrl}/tickets/`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    }
-                );
-                console.log(res.data);
-                if (res.data.success) {
-                    setTickets(res.data.tickets);
-                }
+                const res = await axios.get(`${baseUrl}/tickets/`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (res.data?.success) setTickets(res.data.tickets || []);
             } catch (error) {
                 console.log(error);
             } finally {
                 setLoading(false);
             }
-        }
+        };
 
-        fetchTickets()
-    }, [])
+        fetchTickets();
+    }, []);
 
+    const calculatedStats = useMemo(() => {
+        const pending = tickets.filter((t) => t.status === "Open").length;
+        const closed = tickets.filter((t) => t.status === "Closed").length;
+        const resolved = tickets.filter((t) => t.status === "Resolved").length;
 
-    const stats = [
-        { icon: Ticket, label: 'Total Tickets', value: '4004', bgColor: 'bg-blue-100', iconColor: 'text-blue-500' },
-        { icon: Clock, label: 'Pending Tickets', value: '4124', bgColor: 'bg-yellow-100', iconColor: 'text-yellow-500' },
-        { icon: FileCheck, label: 'Closed Tickets', value: '2487', bgColor: 'bg-green-100', iconColor: 'text-green-500' },
-        { icon: Trash2, label: 'Resolved Tickets', value: '5487', bgColor: 'bg-red-100', iconColor: 'text-red-500' },
-    ];
+        return { total: tickets.length, pending, closed, resolved };
+    }, [tickets]);
+
+    const stats = useMemo(
+        () => [
+            {
+                label: "Total Tickets",
+                value: calculatedStats.total,
+                iconImg: icon1,
+                cardImg: card1,
+                valueClass: "text-indigo-600",
+            },
+            {
+                label: "Pending Tickets",
+                value: calculatedStats.pending,
+                iconImg: icon2,
+                cardImg: card2,
+                valueClass: "text-rose-500",
+            },
+            {
+                label: "Closed Tickets",
+                value: calculatedStats.closed,
+                iconImg: icon3,
+                cardImg: card3,
+                valueClass: "text-violet-600",
+            },
+        ],
+        [calculatedStats]
+    );
 
     const filteredTickets = useMemo(() => {
         let filtered = tickets;
 
-        if (activeTab === 'Pending') {
-            filtered = filtered.filter(ticket => ticket.status === 'Open');
-        } else if (activeTab === 'Closed') {
-            filtered = filtered.filter(ticket => ticket.status === 'Closed');
-        } else if (activeTab === 'Resolved') {
-            filtered = filtered.filter(ticket => ticket.status === 'Resolved');
-        }
+        if (activeTab === "Pending") filtered = filtered.filter((t) => t.status === "Open");
+        else if (activeTab === "Closed") filtered = filtered.filter((t) => t.status === "Closed");
+        else if (activeTab === "Resolved") filtered = filtered.filter((t) => t.status === "Resolved");
 
         if (searchId) {
-            filtered = filtered.filter(ticket =>
-                ticket._id.toLowerCase().includes(searchId.toLowerCase())
+            filtered = filtered.filter((t) =>
+                (t.subject || "").toLowerCase().includes(searchId.toLowerCase())
             );
         }
 
-        // Reverse to show latest first
         return [...filtered].reverse();
     }, [activeTab, searchId, tickets]);
 
-    const itemsPerPage = 5;
+    const itemsPerPage = 8;
     const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
     const paginatedTickets = filteredTickets.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    const calculatedStats = useMemo(() => {
-        const pending = tickets.filter(t => t.status === 'Open').length;
-        const closed = tickets.filter(t => t.status === 'Closed').length;
-        const resolved = tickets.filter(t => t.status === 'Resolved').length;
-
-        return {
-            total: tickets.length,
-            pending,
-            closed,
-            resolved
-        };
-    }, [tickets]);
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Open':
-                return 'bg-yellow-100 text-yellow-600';
-            case 'Closed':
-                return 'bg-green-100 text-green-600';
-            case 'Resolved':
-                return 'bg-blue-100 text-blue-600';
-            default:
-                return 'bg-gray-100 text-gray-600';
-        }
+    const formatDateShort = (dateString) => {
+        if (!dateString) return "N/A";
+        const d = new Date(dateString);
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yy = String(d.getFullYear()).slice(-2);
+        return `${dd}-${mm}-${yy}`;
     };
 
-    const getPriorityColor = (priority) => {
-        switch (priority) {
-            case 'High':
-                return 'bg-red-100 text-red-600';
-            case 'Medium':
-                return 'bg-orange-100 text-orange-600';
-            case 'Low':
-                return 'bg-green-100 text-green-600';
-            default:
-                return 'bg-gray-100 text-gray-600';
-        }
+    const displayStatus = (status) => (status === "Open" ? "Pending" : status);
+
+    const statusPill = (status) => {
+        const s = displayStatus(status);
+        if (s === "Closed") return "bg-green-50 text-green-600";
+        if (s === "Pending") return "bg-orange-50 text-orange-600";
+        if (s === "Resolved") return "bg-indigo-50 text-indigo-600";
+        return "bg-gray-50 text-gray-600";
     };
 
-    const getInitials = (name) => {
-        if (!name) return 'NA';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const priorityPill = (priority) => {
+        if (priority === "High") return "bg-red-50 text-red-600";
+        if (priority === "Medium") return "bg-amber-50 text-amber-700";
+        if (priority === "Low") return "bg-green-50 text-green-700";
+        return "bg-gray-50 text-gray-600";
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        }).replace(/\//g, '.');
+    const rolePill = (role) => {
+        const r = (role || "").toLowerCase();
+        if (r.includes("rmg")) return "bg-fuchsia-50 text-fuchsia-700";
+        if (r.includes("candidate")) return "bg-pink-50 text-pink-700";
+        if (r.includes("admin")) return "bg-sky-50 text-sky-700";
+        if (r.includes("recruit")) return "bg-emerald-50 text-emerald-700";
+        return "bg-gray-50 text-gray-700";
     };
 
-    const handlePageChange = (page) => {
-        if (page >= 1 && page <= totalPages) {
-            setCurrentPage(page);
-        }
+    const getRaisedByName = (t) => t?.raisedBy?.name || "N/A";
+
+    const Sparkline = ({ className = "" }) => (
+        <svg viewBox="0 0 120 40" className={`w-28 h-8 ${className}`} fill="none">
+            <path
+                d="M2 30 C 15 22, 22 34, 34 26 C 46 18, 56 30, 70 22 C 84 14, 96 24, 118 12"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+
+    const openDetails = (ticket) => {
+        setSelectedTicket(ticket);
+        setIsDetailsOpen(true);
     };
 
-    const handleTabChange = (tab) => {
-        setActiveTab(tab);
-        setCurrentPage(1);
+    const closeDetails = () => {
+        setIsDetailsOpen(false);
     };
 
     return (
         <div className="min-h-screen">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {stats.map((stat, index) => {
-                        const StatIcon = stat.icon;
-                        let value = stat.value;
-                        if (stat.label === 'Total Tickets') value = calculatedStats.total;
-                        else if (stat.label === 'Pending Tickets') value = calculatedStats.pending;
-                        else if (stat.label === 'Closed Tickets') value = calculatedStats.closed;
-                        else if (stat.label === 'Resolved Tickets') value = calculatedStats.resolved;
-
-                        return (
-                            <div key={index} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-center gap-4">
-                                    <div className={`${stat.bgColor} p-3 rounded-xl`}>
-                                        <StatIcon className={`w-6 h-6 ${stat.iconColor}`} />
-                                    </div>
-                                    <div>
-                                        <div className="text-2xl font-bold text-gray-900">{value}</div>
-                                        <div className="text-sm text-gray-500">{stat.label}</div>
-                                    </div>
-                                </div>
+            <div className="">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+                    {stats.map((s, idx) => (
+                        <div
+                            key={idx}
+                            className="bg-white rounded-2xl border border-indigo-50 shadow-sm px-5 py-5 min-h-[140px] flex flex-col justify-between"
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="text-sm text-gray-600">{s.label}</div>
+                                <img src={s.iconImg} alt="" className="w-10 h-10 object-contain" />
                             </div>
-                        );
-                    })}
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-200">
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <div className="relative flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Search by ID"
-                                        value={searchId}
-                                        onChange={(e) => setSearchId(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                {/* <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                    <SlidersHorizontal className="w-5 h-5" />
-                                    <span>Filters</span>
-                                </button> */}
+                            <div className="flex justify-between items-center gap-4">
+                                <div className={`text-4xl font-bold leading-none ${s.valueClass}`}>{s.value}</div>
+                                <img src={s.cardImg} alt="" className="w-28 h-12 object-contain" />
                             </div>
                         </div>
+                    ))}
+                </div>
 
-                        <div className="flex gap-6 px-4 border-b border-gray-200 overflow-x-auto items-center justify-between">
-                            <div className="flex gap-6">
-                                <button
-                                    onClick={() => handleTabChange('All')}
-                                    className={`py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'All' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                        }`}
+                <div className="flex flex-row-reverse gap-3 mb-3">
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search by Subject"
+                                value={searchId}
+                                onChange={(e) => {
+                                    setSearchId(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="w-64 max-w-[75vw] h-10 pl-10 pr-3 rounded-lg border border-purple-100 bg-white focus:outline-none focus:ring-2 focus:ring-purple-200"
+                            />
+                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        </div>
+
+                        <button
+                            onClick={() => setIsRaiseOpen(true)}
+                            className="h-10 px-4 rounded-lg bg-gradient-to-r from-[#735BC7] to-[#AAA9FB] text-white text-sm font-medium hover:bg-purple-700"
+                        >
+                            Raise Tickets
+                        </button>
+
+                        <RMGSupportTickets
+                            isOpen={isRaiseOpen}
+                            onClose={() => setIsRaiseOpen(false)}
+                        />
+
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-purple-300 shadow-sm overflow-hidden">
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[980px]">
+                            <thead className="bg-[#F5F5FF]">
+                                <tr className="text-left text-xs font-semibold text-gray-700">
+                                    <th className="px-8 py-4">Serial No.</th>
+                                    <th className="px-8 py-4">Raised By</th>
+                                    <th className="px-8 py-4">Role</th>
+                                    <th className="px-8 py-4">Subject</th>
+                                    <th className="px-8 py-4">Created on</th>
+                                    <th className="px-8 py-4">Priority</th>
+                                    <th className="px-8 py-4">Status</th>
+                                    <th className="px-8 py-4 text-center">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-gray-100">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={8} className="px-8 py-10 text-center text-sm text-gray-700">
+                                            Loading tickets...
+                                        </td>
+                                    </tr>
+                                ) : paginatedTickets.length ? (
+                                    paginatedTickets.map((t, idx) => (
+                                        <tr key={t._id || idx} className="hover:bg-purple-50">
+                                            <td className="px-8 py-4 text-sm text-gray-800">
+                                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                                            </td>
+
+                                            <td className="px-8 py-4 text-sm text-gray-800">{getRaisedByName(t)}</td>
+
+                                            <td className="px-8 py-4">
+                                                <span
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${rolePill(
+                                                        t.role
+                                                    )}`}
+                                                >
+                                                    {t.role || "N/A"}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-8 py-4 text-sm text-gray-800 max-w-[360px] truncate">
+                                                {t.subject || "N/A"}
+                                            </td>
+
+                                            <td className="px-5 py-4 text-sm text-gray-700">
+                                                {formatDateShort(t.createdAt)}
+                                            </td>
+
+                                            <td className="px-8 py-4">
+                                                <span
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${priorityPill(
+                                                        t.priority
+                                                    )}`}
+                                                >
+                                                    {t.priority || "N/A"}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-8 py-4">
+                                                <span
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusPill(
+                                                        t.status
+                                                    )}`}
+                                                >
+                                                    {displayStatus(t.status) || "N/A"}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-8 py-4">
+                                                <div className="flex items-center justify-center">
+                                                    <button
+                                                        onClick={() => openDetails(t)}
+                                                        className="h-9 w-9 rounded-full border border-purple-300 text-purple-600 hover:bg-purple-50"
+                                                    >
+                                                        <Eye className="w-4 h-4 mx-auto" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={8} className="px-8 py-10 text-center text-sm text-gray-500">
+                                            No tickets found
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                {totalPages > 1 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={(p) => setCurrentPage(p)}
+                    />
+                )}
+            </div>
+
+            {isDetailsOpen && selectedTicket && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60" onClick={closeDetails} />
+                    <div className="relative w-full max-w-sm bg-white rounded-[28px] shadow-2xl overflow-hidden">
+                        <div className="px-6 py-5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="text-xl font-bold text-gray-900">Support Ticket Details</div>
+                                <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${rolePill(
+                                        selectedTicket.role
+                                    )}`}
                                 >
-                                    All ({calculatedStats.total})
-                                </button>
-                                <button
-                                    onClick={() => handleTabChange('Pending')}
-                                    className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Pending' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-                                    Pending ({calculatedStats.pending})
-                                </button>
-                                <button
-                                    onClick={() => handleTabChange('Closed')}
-                                    className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Closed' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                                    Closed ({calculatedStats.closed})
-                                </button>
-                                <button
-                                    onClick={() => handleTabChange('Resolved')}
-                                    className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Resolved' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                                    Resolved ({calculatedStats.resolved})
-                                </button>
+                                    {selectedTicket.role || "N/A"}
+                                </span>
                             </div>
+
                             <button
-                                onClick={() => navigate('/RMGAdmin-Dashboard/RMGSupportTickets')}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap text-sm font-medium"
+                                onClick={closeDetails}
+                                className="h-10 w-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
                             >
-                                Raise Tickets
+                                <X className="w-5 h-5 text-gray-900" />
                             </button>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr.No.</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raised By</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Subject</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Priority</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Created Date</th>
-                                        {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th> */}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                                                Loading tickets...
-                                            </td>
-                                        </tr>
-                                    ) : paginatedTickets.length > 0 ? (
-                                        paginatedTickets.map((ticket, index) => (
-                                            <tr
-                                                key={ticket._id || index}
-                                                className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                                onClick={() => setSelectedTicket(ticket)}
-                                            >
-                                                <td className="px-4 py-4 text-sm text-gray-900">
-                                                    {(currentPage - 1) * itemsPerPage + index + 1}.
-                                                </td>
-                                                <td className="px-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                                                            {getInitials(ticket.raisedBy?.name)}
-                                                        </div>
-                                                        <span className="text-sm text-gray-900 hidden sm:inline">
-                                                            {ticket.raisedBy?.name || 'N/A'}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell max-w-xs truncate">
-                                                    {ticket.subject}
-                                                </td>
-                                                <td className="px-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                                                            {ticket.status}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 hidden lg:table-cell">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                                                        {ticket.priority}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 hidden lg:table-cell">
-                                                    {formatDate(ticket.createdAt)}
-                                                </td>
-                                                {/* <td className="px-4 py-4">
-                                                    <button
-                                                        className="p-1 rounded-sm hover:bg-red-100 transition-colors group border border-red-500"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                        }}
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                                    </button>
-                                                </td> */}
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                                                No tickets found
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="px-6 pb-6">
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Subject :</span>
+                                    <span className="text-gray-600">{selectedTicket.subject || "N/A"}</span>
+                                </div>
+
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Raised By :</span>
+                                    <span className="text-gray-600">{getRaisedByName(selectedTicket)}</span>
+                                </div>
+
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Email :</span>
+                                    <span className="text-gray-600">{selectedTicket?.raisedBy?.email || "N/A"}</span>
+                                </div>
+
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Created Date :</span>
+                                    <span className="text-gray-600">{formatDateShort(selectedTicket.createdAt)}</span>
+                                </div>
+
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Updated Date :</span>
+                                    <span className="text-gray-600">{formatDateShort(selectedTicket.updatedAt)}</span>
+                                </div>
+
+                                <div className="flex justify-center gap-2">
+                                    <span className="font-semibold text-gray-900">Assigned to :</span>
+                                    <span className="text-gray-600">
+                                        {selectedTicket?.assignedTo?.name || "Not Assigned"}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-center gap-6 pt-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-gray-900">Priority :</span>
+                                        <span
+                                            className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-medium ${priorityPill(
+                                                selectedTicket.priority
+                                            )}`}
+                                        >
+                                            {selectedTicket.priority || "N/A"}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-gray-900">Status :</span>
+                                        <span
+                                            className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-medium ${statusPill(
+                                                selectedTicket.status
+                                            )}`}
+                                        >
+                                            {displayStatus(selectedTicket.status) || "N/A"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="pt-5">
+                                    <div className="border-t border-dashed  pt-4">
+                                        <div className="text-center font-semibold text-gray-900 mb-3">Description</div>
+                                        <div className="text-center text-gray-600 leading-relaxed whitespace-pre-wrap">
+                                            {selectedTicket.description || "N/A"}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-
-                        {totalPages > 1 && (
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                            />
-                        )}
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm p-6 h-fit">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6">Support Ticket Details</h2>
-
-                        {selectedTicket ? (
-                            <div className="space-y-4">
-                                <div className="inline-block px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">
-                                    {selectedTicket.role || 'N/A'}
-                                </div>
-
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900 mb-1">
-                                        Subject : {selectedTicket.subject}
-                                    </div>
-                                    <div className="text-sm font-medium text-gray-900">
-                                        Raised By : {selectedTicket.raisedBy?.name || 'N/A'}
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                        Email : {selectedTicket.raisedBy?.email || 'N/A'}
-                                    </div>
-                                </div>
-
-                                <div className="">
-                                    <div className='flex gap-3'>
-                                        <div className="text-sm font-medium text-gray-900 mb-1">Created Date :</div>
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {formatDate(selectedTicket.createdAt)}
-                                        </div>
-                                    </div>
-                                    <div className='flex gap-3'>
-                                        <div className="text-sm font-medium text-gray-900">Updated Date :</div>
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {formatDate(selectedTicket.updatedAt)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className='flex gap-3'>
-                                    <div className="text-sm font-medium text-gray-900 mb-2">Priority :</div>
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedTicket.priority)}`}>
-                                        {selectedTicket.priority}
-                                    </span>
-                                </div>
-
-                                <div className='flex gap-3'>
-                                    <div className="text-sm font-medium text-gray-900 mb-2">Status :</div>
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
-                                        {selectedTicket.status}
-                                    </span>
-                                </div>
-
-                                <div className='flex gap-3'>
-                                    <div className="text-sm font-medium text-gray-900 mb-2">Assigned To :</div>
-                                    <span className="text-sm text-gray-600">
-                                        {selectedTicket.assignedTo?.name || 'Not Assigned'}
-                                    </span>
-                                </div>
-
-                                <hr />
-
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900 mb-2">Description :</div>
-                                    <div className="text-sm text-gray-600 leading-relaxed">
-                                        {selectedTicket.description}
-                                    </div>
-                                </div>
-
-                                <hr />
-
-                            </div>
-                        ) : (
-                            <div className="text-center text-gray-500 py-8">
-                                <p className="text-sm">Select a ticket to view details</p>
-                            </div>
-                        )}
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

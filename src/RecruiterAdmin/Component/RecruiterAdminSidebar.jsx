@@ -1,27 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
-  UserPlus,
-  Building2,
-  LogOut,
-  X
-} from 'lucide-react';
+  LayoutGrid,
+  ClipboardList,
+  BarChart3,
+  Search,
+  Headphones,
+  ChevronRight,
+  Brain,
+  ChevronDown,
+  ChevronsUpDown,
+} from "lucide-react";
 
-const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
+const RecruiterAdminSidebar = ({ isOpen = true }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
-  const [activeNav, setActiveNav] = useState('');
+  const navItems = useMemo(
+    () => [
+      {
+        name: "Dashboard",
+        path: "/RecruiterAdmin-Dashboard",
+        icon: Home,
+        label: "Dashboard",
+        match: ["/RecruiterAdmin-Dashboard"],
+      },
+      {
+        name: "JobRequisitions",
+        path: "/RecruiterAdmin-Dashboard/JD",
+        icon: LayoutGrid,
+        label: "Job Requisitions",
+        match: ["/JD"],
+      },
+      {
+        name: "Assessment",
+        path: "/RecruiterAdmin-Dashboard/Assessment",
+        icon: ClipboardList,
+        label: "Candidate Assessment",
+        match: ["/Assessment"],
+      },
+      {
+        name: "Evaluation",
+        path: "/RecruiterAdmin-Dashboard/Results",
+        icon: BarChart3,
+        label: "Candidate Evaluation",
+        match: ["/Results"],
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
-    const path = location.pathname;
+    const p = location.pathname;
 
-    if (path.includes("/JD")) setActiveNav("JobDescription");
-    else if (path.includes("/Assessment")) setActiveNav("Assessment");
-    else if (path.includes("/Results")) setActiveNav("Results");
-    else if (path.includes("/NonCandidateList")) setActiveNav("NonCandidateList");
-    else setActiveNav("Dashboard");
+    if (p.includes("/JD")) setActiveNav("JobRequisitions");
+    else if (p.includes("/Assessment")) setActiveNav("Assessment");
+    else if (p.includes("/Results")) setActiveNav("Evaluation");
+    else if (p === "/RecruiterAdmin-Dashboard") setActiveNav("Dashboard");
   }, [location.pathname]);
 
   const handleNavClick = (name, path) => {
@@ -29,108 +66,141 @@ const RecruiterAdminSidebar = ({ isOpen, onToggle }) => {
     navigate(path);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/Login');
-  };
-
   const NavItem = ({ name, path, icon: Icon, label }) => {
     const isActive = activeNav === name;
 
     return (
-      <li>
-        <button
-          onClick={() => handleNavClick(name, path)}
-          className={`
-            relative flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium
-            ${isActive ? 'bg-white text-[#8b21de] shadow-sm' : 'text-white hover:bg-white/20'}
-          `}
-        >
-          {isActive && (
-            <div className="absolute left-[-16px] top-0 h-full w-1 bg-white rounded-r-md" />
-          )}
-
-          <Icon size={20} />
-          <span>{label}</span>
-        </button>
-      </li>
+      <button
+        onClick={() => handleNavClick(name, path)}
+        className={[
+          "group w-full flex items-center gap-3",
+          "h-9 px-3 rounded-md text-left",
+          "text-[12px] font-medium tracking-wide",
+          "transition-colors duration-200",
+          isActive
+            ? "bg-[#332173] text-white shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+            : "text-white/80 hover:bg-white/10 hover:text-white",
+        ].join(" ")}
+      >
+        <Icon size={16} className={isActive ? "text-white" : "text-white/80"} />
+        <span className="truncate">{label}</span>
+      </button>
     );
   };
 
   return (
-    <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onToggle}
-        />
-      )}
-
-      <div
-        className={`
-          fixed left-0 top-0 h-screen bg-gradient-to-b from-[#9A31BD] to-[#250B52] text-white z-50
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 w-64 flex flex-col shadow-xl rounded-xl ml-1 my-1
-        `}
-      >
-        <div className="flex items-center justify-between pb-8 py-4 px-6">
-          <div className='w-full text-center'>
-            <h1 className="text-3xl font-bold tracking-wide">RecruterAI</h1>
+    <aside
+      className={[
+        "fixed left-0 top-0 bottom-0 z-40 w-[260px] ml-1 my-1 rounded-xl",
+        "px-4 py-5 text-white",
+        "transition-transform duration-300",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        "lg:translate-x-0",
+        "bg-gradient-to-b from-[#1A1034] via-[#241554] to-[#1A1034]",
+        "flex flex-col",
+      ].join(" ")}
+    >
+      <div className="shrink-0">
+        <div className="flex justify-center items-center gap-2 px-1">
+          <div className="text-[22px] font-semibold">
+            Recruiter<span className="text-white/90">AI</span>
           </div>
-          <button
-            onClick={onToggle}
-            className="p-1 rounded hover:bg-white/20 lg:hidden"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4">
-          <ul className="space-y-2">
-
-            <NavItem
-              name="Dashboard"
-              path="/RecruiterAdmin-Dashboard"
-              icon={Home}
-              label="Dashboard"
+        {/* Search */}
+        <div className="mt-4">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"
             />
-
-            <NavItem
-              name="JobDescription"
-              path="/RecruiterAdmin-Dashboard/JD"
-              icon={UserPlus}
-              label="Job Requisitions"
+            <input
+              placeholder="Search"
+              className={[
+                "w-full h-9 rounded-md",
+                "bg-white/10",
+                "pl-9 pr-3 text-[12px]",
+                "outline-none text-white placeholder:text-white/60",
+                "ring-1 ring-white/40 focus:ring-white/40",
+              ].join(" ")}
             />
-
-            <NavItem
-              name="Assessment"
-              path="/RecruiterAdmin-Dashboard/Assessment"
-              icon={Building2}
-              label="Assessment"
-            />
-
-            <NavItem
-              name="Results"
-              path="/RecruiterAdmin-Dashboard/Results"
-              icon={Building2}
-              label="Candidate Evaluation"
-            />
-
-            <li>
-              <button
-                onClick={handleLogout}
-                className={`flex w-full items-center space-x-3 py-3 px-4 rounded-lg transition-all duration-200 font-medium text-white hover:bg-white/20`}
-              >
-                <LogOut size={20} />
-                <span>Logout</span>
-              </button>
-            </li>
-
-          </ul>
-        </nav>
+          </div>
+        </div>
       </div>
-    </>
+
+      <div
+        className="mt-5 flex-1 overflow-y-auto pr-1 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <nav className="flex flex-col gap-2">
+          {navItems.map((item) => (
+            <NavItem key={item.name} {...item} />
+          ))}
+        </nav>
+
+        <div className="mt-6">
+          <div
+            className={[
+              "rounded-xl p-4",
+              "bg-gradient-to-b from-white/10 to-white/5",
+              "ring-1 ring-white/10",
+            ].join(" ")}
+          >
+            <div className="flex justify-center">
+              <div className="grid place-items-center h-10 w-10 rounded-full bg-white/10 ring-1 ring-white/10">
+                <Headphones size={18} />
+              </div>
+            </div>
+
+            <div className="mt-3 text-center">
+              <div className="text-[12px] font-semibold">Need Support?</div>
+              <div className="mt-1 text-[10px] text-white/65">
+                Get in touch with our agents
+              </div>
+
+              <button
+                className={[
+                  "mt-3 w-full h-9 rounded-md",
+                  "bg-[#332173] hover:bg-[#3a2580]",
+                  "text-[12px] font-semibold",
+                  "shadow-[0_10px_22px_rgba(0,0,0,0.25)]",
+                ].join(" ")}
+                onClick={() => navigate("/support")}
+              >
+                Contact Us
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="shrink-0 pt-3 border-t border-white/10">
+        <button
+          className={[
+            "w-full flex items-center gap-3",
+            "rounded-full p-3",
+            "bg-white/10 hover:bg-white/15",
+            "ring-1 ring-white/10",
+            "transition-colors",
+          ].join(" ")}
+          onClick={() => navigate("/profile")}
+        >
+          <img
+            src="https://i.pravatar.cc/80?img=47"
+            alt="profile"
+            className="h-9 w-9 rounded-full ring-2 ring-white/20"
+          />
+          <div className="min-w-0 flex-1 text-left">
+            <div className="text-[12px] font-semibold leading-4 truncate">
+              Leena Singh
+            </div>
+            <div className="text-[10px] text-white/65 leading-4 truncate">
+              Recruiter
+            </div>
+          </div>
+          <ChevronsUpDown size={16} className="text-white/70" />
+        </button>
+      </div>
+    </aside>
   );
 };
 

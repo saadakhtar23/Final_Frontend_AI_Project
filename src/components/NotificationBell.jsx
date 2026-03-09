@@ -5,6 +5,7 @@ import useSocket from '../utils/useSocket';
 import { baseUrl } from '../utils/ApiConstants.jsx';
  
 export default function NotificationBell({ userId }) {
+  console.log('NotificationBell component mounted/rendered, userId:', userId);
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [buttonPosition, setButtonPosition] = useState({ top: 0, right: 0 });
@@ -49,6 +50,10 @@ export default function NotificationBell({ userId }) {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (showDropdown && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        // Also check if click is inside the dropdown portal
+        if (dropdownRef.current && dropdownRef.current.contains(e.target)) {
+          return; // Don't close if clicking inside dropdown
+        }
         setShowDropdown(false);
       }
     };
@@ -101,7 +106,9 @@ export default function NotificationBell({ userId }) {
  
       {showDropdown && createPortal(
         <div
+          ref={dropdownRef}
           className="fixed w-80 bg-white border border-gray-200 rounded-xl shadow-2xl animate-fade-in"
+          onClick={(e) => e.stopPropagation()}
           style={{
             top: buttonPosition.top,
             right: buttonPosition.right,

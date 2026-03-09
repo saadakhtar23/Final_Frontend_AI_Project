@@ -1,7 +1,7 @@
+import { ChevronLeft } from "lucide-react";
 import React from "react";
 
 function Pagination({ currentPage, totalPages, onPageChange }) {
-
   const getPageWindow = () => {
     const windowStart = Math.floor((currentPage - 1) / 5) * 5 + 1;
     const windowEnd = Math.min(windowStart + 4, totalPages);
@@ -42,30 +42,24 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
   };
 
   return (
-    <div className="flex justify-center items-center mt-6 space-x-1 mb-2">
-      <button
-        onClick={handlePrevFive}
-        disabled={windowStart === 1}
-        className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-      >
-        &lt;&lt;
-      </button>
-
+    <div className="flex justify-center items-center mt-6 space-x-3 mb-2">
       <button
         onClick={handlePrevOne}
         disabled={currentPage === 1}
-        className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-10 h-10 flex items-center justify-center rounded-xl border border-purple-400 text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        &lt;
+        <ChevronLeft size={18} />
       </button>
 
       {pageNumbers.map((page) => (
         <button
           key={page}
           onClick={() => onPageChange(page)}
-          className={`px-3 py-1 rounded-full transition-colors ${currentPage === page
-              ? "bg-purple-600 text-white"
-              : "hover:bg-gray-100"
+          className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all
+            ${
+              currentPage === page
+                ? "bg-purple-600 text-white border-purple-600"
+                : "border-purple-400 text-purple-600 hover:bg-purple-50"
             }`}
         >
           {page}
@@ -75,17 +69,9 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={handleNextOne}
         disabled={currentPage === totalPages}
-        className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-10 h-10 flex items-center justify-center rounded-xl border border-purple-400 text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        &gt;
-      </button>
-
-      <button
-        onClick={handleNextFive}
-        disabled={windowEnd >= totalPages}
-        className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-      >
-        &gt;&gt;
+        <ChevronLeft size={18} className="rotate-180" />
       </button>
     </div>
   );
