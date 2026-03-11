@@ -1,28 +1,29 @@
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useCompany } from '../../Context/companyContext';
 import { baseUrl } from '../../utils/ApiConstants';
- 
+
 function AddNewRecruiter({ onSave, onCancel, editData }) {
     const { companies } = useCompany();
-   
+
     const companiesList = companies?.data || [];
- 
+
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
         phone: '',
-        companyId: '',    
-        companyName: ''    
+        companyId: '',
+        companyName: ''
     });
- 
+
     const [errors, setErrors] = useState({});
- 
+
     const validatePhone = (phone) => {
-        const phoneRegex = /^\d{10,}$/; // At least 10 digits
+        const phoneRegex = /^\d{10,}$/;
         return phoneRegex.test(phone);
     };
- 
+
     const handlePhoneChange = (e) => {
         const value = e.target.value;
         setFormData({ ...formData, phone: value });
@@ -32,13 +33,13 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
             setErrors({ ...errors, phone: '' });
         }
     };
- 
+
     const handleKeyPress = (e) => {
         if (!/[0-9]/.test(e.key)) {
             e.preventDefault();
         }
     };
- 
+
     useEffect(() => {
         if (editData) {
             const company = companiesList.find(c => c._id === editData.company);
@@ -61,27 +62,26 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
             }
         }
     }, [editData, companiesList]);
- 
+
     const handleCompanyChange = (e) => {
         const selectedId = e.target.value;
         const selectedCompany = companiesList.find(c => c._id === selectedId);
-       
+
         setFormData({
             ...formData,
             companyId: selectedId,
             companyName: selectedCompany?.companyName || ''
         });
     };
- 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
- 
-        // Validate phone before submitting
+
         if (formData.phone && !validatePhone(formData.phone)) {
             setErrors({ ...errors, phone: 'Phone number must be at least 10 digits' });
             return;
         }
- 
+
         try {
             if (editData) {
                 const response = await axios.put(
@@ -90,7 +90,7 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
                         name: formData.fullName,
                         phone: formData.phone,
                         email: formData.email,
-                        company: formData.companyId  
+                        company: formData.companyId
                     },
                     {
                         headers: {
@@ -98,7 +98,7 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
                         }
                     }
                 );
- 
+
                 if (response.data.success) {
                     alert("HR updated successfully!");
                     onSave({
@@ -117,11 +117,11 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
                     }
                 });
- 
+
                 alert("HR created successfully!");
                 onSave(response.data);
             }
- 
+
             setFormData({
                 fullName: '',
                 email: '',
@@ -129,92 +129,108 @@ function AddNewRecruiter({ onSave, onCancel, editData }) {
                 companyId: companiesList[0]?._id || '',
                 companyName: companiesList[0]?.companyName || ''
             });
- 
+
         } catch (error) {
             console.error('Error:', error);
             alert(error.response?.data?.message || `Failed to ${editData ? 'update' : 'create'} HR`);
         }
     };
- 
+
     return (
-        <div className="bg-white rounded-2xl shadow-md border border-gray-300 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {editData ? 'Edit Recruiter' : 'Add Recruiters'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">Full Name</label>
-                    <input
-                        type="text"
-                        placeholder="Enter Full Name"
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                        required
-                    />
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-[560px] bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div className="px-6 py-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        {editData ? 'Edit Recruiters' : 'Add Recruiters'}
+                    </h2>
+                    <button
+                        onClick={onCancel}
+                        className="w-9 h-9 rounded-full hover:bg-gray-100 grid place-items-center"
+                    >
+                        <X className="w-5 h-5 text-gray-700" />
+                    </button>
                 </div>
- 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-2">Email ID</label>
-                        <input
-                            type="email"
-                            placeholder="Enter Email ID"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                            required
-                        />
+
+                <form onSubmit={handleSubmit} className="px-6 pb-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-800 mb-2">
+                                Full Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.fullName}
+                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                placeholder="Enter name"
+                                className="w-full h-12 rounded-lg border border-gray-200 bg-[#FBFBFF] px-4 outline-none focus:ring-2 focus:ring-[#6D5DD3]/25"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-800 mb-2">
+                                Email Id <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                placeholder="Enter email"
+                                className="w-full h-12 rounded-lg border border-gray-200 bg-[#FBFBFF] px-4 outline-none focus:ring-2 focus:ring-[#6D5DD3]/25"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-800 mb-2">
+                                Phone No. <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="tel"
+                                value={formData.phone}
+                                onChange={handlePhoneChange}
+                                onKeyPress={handleKeyPress}
+                                placeholder="Enter phone no."
+                                className={`w-full h-12 rounded-lg border bg-[#FBFBFF] px-4 outline-none focus:ring-2 focus:ring-[#6D5DD3]/25 ${errors.phone ? 'border-red-500' : 'border-gray-200'}`}
+                                required
+                            />
+                            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-800 mb-2">
+                                Company Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.companyName}
+                                readOnly
+                                placeholder="Company name"
+                                className="w-full h-12 rounded-lg border border-gray-200 bg-[#FBFBFF] px-4 outline-none focus:ring-2 focus:ring-[#6D5DD3]/25"
+                                required
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-2">Phone Number</label>
-                        <input
-                            type="tel"
-                            placeholder="Enter Phone Number"
-                            value={formData.phone}
-                            onChange={handlePhoneChange}
-                            onKeyPress={handleKeyPress}
-                            className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
-                            required
-                        />
-                        {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-                    </div>
-                </div>
- 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-end">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-2">Company Name</label>
-                        <input
-                            type="text"
-                            className="form-control w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                            id="companyName"
-                            name="companyName"
-                            value={formData.companyName}
-                            readOnly
-                            required
-                        />
-                    </div>
-                    <div className="flex gap-3">
+
+                    <div className="flex items-center gap-4 mt-6">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="flex-1 h-12 rounded-lg border border-[#6D5DD3] text-[#6D5DD3] font-medium hover:bg-[#6D5DD3]/5 transition"
+                        >
+                            Cancel
+                        </button>
                         <button
                             type="submit"
-                            className="px-8 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                            className="flex-1 h-12 rounded-lg bg-[#6D5DD3] text-white font-medium hover:brightness-95 transition"
                         >
                             {editData ? 'Update' : 'Save'}
                         </button>
-                        {onCancel && (
-                            <button
-                                type="button"
-                                onClick={onCancel}
-                                className="px-8 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                            >
-                                Cancel
-                            </button>
-                        )}
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 }
- 
+
 export default AddNewRecruiter;

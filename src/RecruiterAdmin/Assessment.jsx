@@ -5,7 +5,7 @@ import SpinLoader from "../components/SpinLoader";
 
 function Assessment() {
   const navigate = useNavigate();
-
+  const [openSkillPopup, setOpenSkillPopup] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 8;
   const [search, setSearch] = useState("");
@@ -241,7 +241,7 @@ function Assessment() {
                       key={row.question_set_id || row.job_id || idx}
                       className="border-t border-gray-100 hover:bg-[#fbfbff] transition"
                     >
-                      <td className="px-8 py-5 text-[#1f2340]">{startIndex + idx + 1}</td>
+                      <td className="px-8 py-5 text-[#1f2340]">{startIndex + idx + 1}.</td>
 
                       <td className="px-6 py-5 text-[#1f2340]">{row.title || "-"}</td>
 
@@ -252,18 +252,85 @@ function Assessment() {
                       </td>
 
                       <td className="px-6 py-5">
-                        {row.skills && row.skills.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {row.skills.map((skill, sIdx) => (
-                              <span
-                                key={`${row.question_set_id}-skill-${sIdx}`}
-                                className="rounded-full bg-gray-100 px-3 py-1 text-xs text-[#1f2340]"
-                              >
-                                {typeof skill === "string" ? skill : skill?.skill}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
+                        {row.skills && row.skills.length > 0 ? (() => {
+                          const skillNames = row.skills
+                            .map((skill) => {
+                              const name = typeof skill === "string" ? skill : skill?.skill || "";
+                              return name.replace(/^"|"$/g, "").trim();
+                            })
+                            .filter((s) => s.length > 0);
+
+                          if (skillNames.length === 0) {
+                            return <span className="text-xs text-gray-400">No skills</span>;
+                          }
+
+                          const visibleSkills = skillNames.slice(0, 3);
+                          const remainingSkills = skillNames.slice(3);
+                          const hasMore = remainingSkills.length > 0;
+                          const popupId = row.question_set_id || row.job_id || idx;
+
+                          return (
+                            <>
+                              <div className="flex items-center gap-2">
+                                {visibleSkills.map((s, sIdx) => (
+                                  <span
+                                    key={`${popupId}-skill-${sIdx}`}
+                                    className="rounded-full bg-gray-100 px-3 py-1 text-xs text-[#1f2340] whitespace-nowrap"
+                                  >
+                                    {s}
+                                  </span>
+                                ))}
+                                {hasMore && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenSkillPopup(openSkillPopup === popupId ? null : popupId);
+                                    }}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 hover:bg-indigo-200 transition cursor-pointer"
+                                  >
+                                    +{remainingSkills.length}
+                                  </button>
+                                )}
+                              </div>
+
+                              {openSkillPopup === popupId && (
+                                <div
+                                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                                  onClick={() => setOpenSkillPopup(null)}
+                                >
+                                  <div
+                                    className="bg-white rounded-2xl shadow-2xl border border-indigo-200 p-6 min-w-[320px] max-w-[480px] w-[90vw] sm:w-auto"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex items-center justify-between mb-4">
+                                      <h3 className="text-sm font-bold text-[#2b2f4a]">
+                                        All Skills — {row.title || "Assessment"}
+                                      </h3>
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenSkillPopup(null)}
+                                        className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition text-lg leading-none cursor-pointer"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {skillNames.map((s, sIdx) => (
+                                        <span
+                                          key={`popup-${popupId}-skill-${sIdx}`}
+                                          className="rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-800"
+                                        >
+                                          {s}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })() : (
                           <span className="text-xs text-gray-400">No skills</span>
                         )}
                       </td>
@@ -307,26 +374,32 @@ function Assessment() {
               </span>
             </button>
 
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const page = i + 1;
-              const active = page === currentPage;
+            {(() => {
+              const pageGroup = Math.ceil(currentPage / 5);
+              const startPage = (pageGroup - 1) * 5 + 1;
+              const endPage = Math.min(startPage + 4, totalPages);
 
-              return (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={[
-                    "h-8 w-8 rounded-md border text-sm font-medium",
-                    active
-                      ? "border-indigo-600 bg-indigo-600 text-white"
-                      : "border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50",
-                  ].join(" ")}
-                >
-                  {page}
-                </button>
-              );
-            })}
+              return Array.from({ length: endPage - startPage + 1 }).map((_, i) => {
+                const page = startPage + i;
+                const active = page === currentPage;
+
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={[
+                      "h-8 w-8 rounded-md border text-sm font-medium",
+                      active
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50",
+                    ].join(" ")}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+            })()}
 
             <button
               type="button"

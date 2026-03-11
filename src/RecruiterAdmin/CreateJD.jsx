@@ -4,6 +4,15 @@ import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import SpinLoader from '../components/SpinLoader';
 import { baseUrl } from '../utils/ApiConstants';
+import summary from '../img/summary-check.png'
+import graduation from '../img/graduation-cap.png'
+import user from '../img/user-trust.png'
+import overview from '../img/overview.png'
+import bag from '../img/bag.png'
+import exp from '../img/exp-check.png'
+import map from '../img/map.png'
+import calender from '../img/calender.png'
+import city from '../img/city.png'
 
 function CreateJD() {
     const location = useLocation();
@@ -697,16 +706,19 @@ function CreateJD() {
                             ) : (
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                                     <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                                        <div className="p-5 space-y-6 relative max-h-[560px] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-4">
-                                            <div className="absolute right-0 top-0 h-full w-1 bg-[#5B4BFF] opacity-80"></div>
+                                        <div className="p-5 space-y-6 relative max-h-[560px] overflow-y-auto pr-4
+    [&::-webkit-scrollbar]:w-1.5
+    [&::-webkit-scrollbar-track]:bg-gray-100
+    [&::-webkit-scrollbar-track]:rounded-full
+    [&::-webkit-scrollbar-thumb]:bg-[#5B4BFF]
+    [&::-webkit-scrollbar-thumb]:rounded-full
+    [&::-webkit-scrollbar-thumb]:hover:bg-[#4A3CF0]"
+                                            style={{ scrollbarWidth: 'thin', scrollbarColor: '#5B4BFF #f3f4f6' }}>
 
                                             <div>
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                            <path d="M7 7h10M7 11h10M7 15h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                                            <path d="M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" />
-                                                        </svg>
+                                                    <div className="w-7 h-7 flex items-center justify-center">
+                                                        <img src={summary} alt="" />
                                                     </div>
                                                     <h3 className="font-semibold text-gray-900">Job Summary</h3>
                                                 </div>
@@ -737,11 +749,8 @@ function CreateJD() {
 
                                             <div>
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                            <path d="M12 3 2 8l10 5 10-5-10-5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                                                            <path d="M6 10v6c0 1.5 2.7 3 6 3s6-1.5 6-3v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                                        </svg>
+                                                    <div className="w-7 h-7 flex items-center justify-center">
+                                                        <img src={graduation} alt="" />
                                                     </div>
                                                     <h3 className="font-semibold text-gray-900">Qualification</h3>
                                                 </div>
@@ -793,10 +802,9 @@ function CreateJD() {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                            <path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" />
-                                                        </svg>
+                                                        <div className="w-7 h-7 flex items-center justify-center">
+                                                            <img src={user} alt="" />
+                                                        </div>
                                                     </div>
                                                     <h3 className="font-semibold text-gray-900">Responsibilities</h3>
                                                 </div>
@@ -926,45 +934,66 @@ function CreateJD() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                                        <div className="rounded-2xl border border-gray-200 bg-white py-5 px-3">
                                             <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                        <path d="M4 5h16v14H4V5Z" stroke="currentColor" strokeWidth="2" />
-                                                        <path d="M8 9h8M8 13h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                                    </svg>
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                                    <img src={overview} alt="" />
                                                 </div>
                                                 <h3 className="font-semibold text-gray-900">Overview</h3>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="text-sm">
-                                                    <div className="text-xs text-gray-500 mb-1">Employment Type</div>
-                                                    <div className="font-medium text-gray-900">Full Time</div>
+                                                    <div className='flex gap-2'>
+                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                                            <img src={bag} alt="" />
+                                                        </div>
+                                                        <div className=''>
+                                                            <div className="text-xs text-gray-500 mb-1">Employment <br /> Type</div>
+                                                            <div className="font-medium text-center text-gray-900">Full Time</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="text-sm">
-                                                    <div className="text-xs text-gray-500 mb-1">Experience</div>
-                                                    <div className="font-medium text-gray-900">—</div>
+                                                    <div className='flex gap-2'>
+                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                                            <img src={exp} alt="" />
+                                                        </div>
+                                                        <div className=''>
+                                                            <div className="text-xs text-gray-500 mb-1">Experience</div>
+                                                            <div className="font-medium text-gray-900">—</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="text-sm">
-                                                    <div className="text-xs text-gray-500 mb-1">Location</div>
-                                                    <div className="font-medium text-gray-900">—</div>
+                                                    <div className='flex gap-2'>
+                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                                            <img src={map} alt="" />
+                                                        </div>
+                                                        <div className=''>
+                                                            <div className="text-xs text-gray-500 mb-1">Location</div>
+                                                            <div className="font-medium text-gray-900">—</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="text-sm">
-                                                    <div className="text-xs text-gray-500 mb-1">Timeline</div>
-                                                    <div className="font-medium text-gray-900">—</div>
+                                                    <div className='flex gap-2'>
+                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                                            <img src={calender} alt="" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-gray-500 mb-1">Timeline</div>
+                                                            <div className="font-medium text-gray-900">—</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="rounded-2xl border border-gray-200 bg-white p-5">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <div className="w-8 h-8 rounded-lg bg-[#F0EFFF] flex items-center justify-center text-[#5B4BFF]">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                        <path d="M3 21h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                                        <path d="M5 21V7l7-4 7 4v14" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                                                        <path d="M9 21v-8h6v8" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                                                    </svg>
+                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center">
+                                                    <img src={city} alt="" />
                                                 </div>
                                                 <h3 className="font-semibold text-gray-900">About The Company</h3>
                                             </div>

@@ -342,15 +342,25 @@ function RequirementForm() {
                     required
                     min={new Date().toISOString().split("T")[0]}
                     className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-indigo-500 
-  [&::-webkit-calendar-picker-indicator]:opacity-0 
-  [&::-webkit-calendar-picker-indicator]:appearance-none"
+        [&::-webkit-calendar-picker-indicator]:absolute
+        [&::-webkit-calendar-picker-indicator]:right-0
+        [&::-webkit-calendar-picker-indicator]:top-0
+        [&::-webkit-calendar-picker-indicator]:h-full
+        [&::-webkit-calendar-picker-indicator]:w-10
+        [&::-webkit-calendar-picker-indicator]:opacity-0
+        [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M8 7V3m8 4V3M4 11h16M6 19h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
                   </svg>
                 </div>
               </div>
-
               <div>
                 <label className="block text-[13px] font-medium text-[#111827] mb-2">
                   Assigned to (HR) <span className="text-red-500">*</span>

@@ -1,48 +1,34 @@
-import React, { useState } from "react";
-import { Calendar, Download } from "lucide-react";
-import robot from '../../assets/robot.png'
-import axios from 'axios';
-import { baseUrl } from '../../utils/ApiConstants';
+import React, { useMemo, useRef, useState } from "react";
+import { Calendar, ChevronDown, X } from "lucide-react";
+import axios from "axios";
+import { baseUrl } from "../../utils/ApiConstants";
 
-export default function RaiseTickets() {
+export default function RaiseTickets({ isOpen, onClose, onSuccess }) {
   const [subject, setSubject] = useState("");
+  const [priority, setPriority] = useState("");
+  const [date, setDate] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supportHistory = [
-    {
-      supportId: "#254798",
-      requestType: "Issue with Candidate Selection",
-      startDate: "20-02-2025",
-      endDate: "20-02-2025",
-      status: "Solved"
-    },
-    {
-      supportId: "#254799",
-      requestType: "Issue with Candidate Selection",
-      startDate: "20-02-2025",
-      endDate: "20-02-2025",
-      status: "Solved"
-    },
-    {
-      supportId: "#254800",
-      requestType: "Issue with Candidate Selection",
-      startDate: "20-02-2025",
-      endDate: "20-02-2025",
-      status: "Solved"
-    },
-    {
-      supportId: "#254801",
-      requestType: "Issue with Candidate Selection",
-      startDate: "20-02-2025",
-      endDate: "20-02-2025",
-      status: "Solved"
-    }
-  ];
+  const hiddenDateRef = useRef(null);
+
+  const formattedDate = useMemo(() => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB").replace(/\//g, "-");
+  }, [date]);
+
+  const openDatePicker = () => {
+    if (!hiddenDateRef.current) return;
+    if (typeof hiddenDateRef.current.showPicker === "function")
+      hiddenDateRef.current.showPicker();
+    else hiddenDateRef.current.click();
+  };
 
   const handleSubmitTicket = async () => {
     if (!subject.trim() || !message.trim()) {
-      alert("Please fill in both request type and remarks");
+      alert("Please fill in both subject and description");
       return;
     }
 
@@ -51,26 +37,36 @@ export default function RaiseTickets() {
     try {
       const token = localStorage.getItem("token");
 
+      const meta = [
+        formattedDate ? `Date: ${formattedDate}` : "",
+        priority ? `Priority: ${priority}` : "",
+      ].filter(Boolean);
+
+      const finalMessage = meta.length
+        ? `${meta.join(" | ")}\n${message}`
+        : message;
+
       const response = await axios.post(
         `${baseUrl}/api/tickets/raise-ticket-admin`,
         {
           subject,
-          message
+          message: finalMessage,
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
-      console.log(response.data);
-      
+      // console.log(response.data);
 
       alert("Ticket raised successfully!");
       setSubject("");
+      setPriority("");
+      setDate("");
       setMessage("");
-      console.log("Ticket response:", response.data);
-
+      onSuccess?.(response.data);
+      onClose?.();
     } catch (error) {
       console.error("Error raising ticket:", error);
       alert(error.response?.data?.message || "Failed to raise ticket");
@@ -79,166 +75,117 @@ export default function RaiseTickets() {
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Support ID', 'Request Type', 'Start Date', 'End Date', 'Status'];
-
-    const rows = supportHistory.map(item => [
-      item.supportId,
-      item.requestType,
-      item.startDate,
-      item.endDate,
-      item.status
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    const currentDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
-    const fileName = `Support_History_${currentDate}.csv`;
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center">
-      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-10 mb-10">
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Create New Ticket
-        </h2>
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-        <p className="text-gray-400 mt-1">
-          Fill up all the information here, then click submit button
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Request Type
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Write your request type"
-              className="w-full border-b border-gray-300 focus:outline-none text-gray-700"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Date
-            </label>
-            <div className="flex items-center border-b border-gray-300">
-              <input
-                type="text"
-                value={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                readOnly
-                className="w-full focus:outline-none text-gray-700"
-              />
-              <Calendar className="text-gray-500 w-5 h-5" />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          className="w-full max-w-[450px] bg-white shadow-xl relative mx-4 max-h-[90vh]"
+          style={{ borderRadius: '22px', overflow: 'hidden' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
+            <div className="relative flex items-center justify-center">
+              <div className="text-xl font-semibold text-gray-900">
+                Create New Ticket
+              </div>
+              <button
+                onClick={onClose}
+                className="absolute right-0 top-0 w-9 h-9 grid place-items-center rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-900" />
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 flex flex-col md:flex-row md:items-end gap-4">
-          <div className="flex-1">
-            <label className="block text-gray-700 font-medium mb-1">
-              Remarks
-            </label>
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Write your remark"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400"
-            />
-          </div>
-
-          <button
-            onClick={handleSubmitTicket}
-            disabled={isSubmitting}
-            className="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Tickets"}
-          </button>
-        </div>
-      </div>
-
-      {/* <div className="w-full max-w-6xl flex flex-col md:flex-row items-start gap-8">
-        <div className="w-full md:w-1/3 flex justify-center md:justify-start">
-          <img
-            src={robot}
-            alt="robot"
-            className="w-48 md:w-60 object-contain"
-          />
-        </div>
-
-        <div className="w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="overflow-y-auto px-6 pb-6 pt-4 space-y-4" style={{ maxHeight: 'calc(90vh - 60px)' }}>
             <div>
-
-              <h3 className="text-lg font-semibold text-gray-900">
-                Latest Support History
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Here is your recent history
-              </p>
+              <div className="text-sm font-medium text-gray-900 mb-2">
+                Subject <span className="text-red-500">*</span>
+              </div>
+              <input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter subject"
+                className="w-full h-12 rounded-xl border border-gray-200 bg-[#FAFAFF] px-4 text-sm outline-none focus:ring-2 focus:ring-[#6D5BD0]/20"
+              />
             </div>
 
-            <button 
-              onClick={handleExportCSV}
-              className="flex items-center gap-2 border border-gray-300 px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-2">
+                Date <span className="text-red-500">*</span>
+              </div>
+              <div className="relative">
+                <input
+                  value={formattedDate}
+                  readOnly
+                  onClick={openDatePicker}
+                  placeholder="Select date"
+                  className="w-full h-12 rounded-xl border border-gray-200 bg-[#FAFAFF] px-4 pr-10 text-sm outline-none focus:ring-2 focus:ring-[#6D5BD0]/20 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={openDatePicker}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
+                <input
+                  ref={hiddenDateRef}
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 pointer-events-none"
+                  tabIndex={-1}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-2">
+                Priority <span className="text-red-500">*</span>
+              </div>
+              <div className="relative">
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full h-12 rounded-xl border border-gray-200 bg-[#FAFAFF] px-4 pr-10 text-sm outline-none focus:ring-2 focus:ring-[#6D5BD0]/20 appearance-none"
+                >
+                  <option value="">Select priority</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-medium text-gray-900 mb-2">
+                Description <span className="text-red-500">*</span>
+              </div>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Enter description"
+                rows={5}
+                className="w-full rounded-xl border border-gray-200 bg-[#FAFAFF] px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#6D5BD0]/20 resize-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSubmitTicket}
+              disabled={isSubmitting}
+              className="w-full h-10 rounded-lg bg-gradient-to-r from-[#684FBC] to-[#886BE6] text-white text-sm font-medium disabled:opacity-60 hover:bg-[#5a4abf] transition-colors"
             >
-              <Download className="w-4 h-4" /> Export
+              {isSubmitting ? "Submitting..." : "Submit Ticket"}
             </button>
           </div>
-
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full min-w-[600px] text-left border-t border-gray-200">
-              <thead>
-                <tr className="text-sm text-gray-600">
-                  <th className="py-2 pr-4 whitespace-nowrap">Support ID</th>
-                  <th className="py-2 pr-4 whitespace-nowrap">Request type</th>
-                  <th className="py-2 pr-4 whitespace-nowrap">Start Date</th>
-                  <th className="py-2 pr-4 whitespace-nowrap">End Date</th>
-                  <th className="py-2 whitespace-nowrap">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-
-                {supportHistory.map((item, index) => (
-                  <tr
-                    key={index}
-                    className="border-t border-gray-200 text-sm text-gray-700"
-                  >
-                    <td className="py-3 pr-4">{item.supportId}</td>
-                    <td className="py-3 pr-4">{item.requestType}</td>
-                    <td className="py-3 pr-4 whitespace-nowrap">{item.startDate}</td>
-                    <td className="py-3 pr-4 whitespace-nowrap">{item.endDate}</td>
-                    <td className="py-3 text-green-600 font-medium">{item.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
-      </div> */}
+      </div>
     </div>
   );
 }

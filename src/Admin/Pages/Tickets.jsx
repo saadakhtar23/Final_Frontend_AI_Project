@@ -1,296 +1,328 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, Ticket, Clock, FileCheck, Trash2, ChevronDown } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
-import Pagination from '../../components/LandingPage/Pagination';
 import SupportTicketDetail from '../Components/SupportTicketsDetail';
 import { baseUrl } from '../../utils/ApiConstants';
+import RaiseTickets from './RaiseTickets';
+import TT from "../../img/TT.png";
+import APT from "../../img/APT.png";
+import CT from "../../img/CT.png";
+import ISL from "../../img/ISL.png";
+import TAL from "../../img/TAL.png";
+
+const getRolePill = (role) => {
+    const key = (role || '').toLowerCase();
+    if (key.includes('rmg')) return 'bg-purple-100 text-purple-700';
+    if (key.includes('candidate')) return 'bg-pink-100 text-pink-700';
+    if (key.includes('admin')) return 'bg-blue-100 text-blue-700';
+    if (key.includes('recruiter')) return 'bg-emerald-100 text-emerald-700';
+    return 'bg-gray-100 text-gray-700';
+};
+
+const getPriorityPill = (priority) => {
+    if (priority === 'High') return 'bg-red-100 text-red-600';
+    if (priority === 'Medium') return 'bg-amber-100 text-amber-700';
+    if (priority === 'Low') return 'bg-green-100 text-green-700';
+    return 'bg-gray-100 text-gray-700';
+};
+
+const getStatusPill = (status) => {
+    if (status === 'Closed') return 'bg-green-100 text-green-700';
+    if (status === 'Resolved') return 'bg-blue-100 text-blue-700';
+    return 'bg-orange-100 text-orange-700';
+};
+
+const getStatusLabel = (status) => {
+    if (status === 'Open') return 'Pending';
+    return status || 'Pending';
+};
 
 const Tickets = () => {
-    const [activeTab, setActiveTab] = useState('All');
     const [selectedTicket, setSelectedTicket] = useState(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isRaiseOpen, setIsRaiseOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchId, setSearchId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [allTickets, setAllTickets] = useState([]);
 
-    const stats = [
-        { icon: Ticket, label: 'Total Tickets', value: '4004', bgColor: 'bg-blue-100', iconColor: 'text-blue-500' },
-        { icon: Clock, label: 'Pending Tickets', value: '4124', bgColor: 'bg-yellow-100', iconColor: 'text-yellow-500' },
-        { icon: FileCheck, label: 'Closed Tickets', value: '2487', bgColor: 'bg-green-100', iconColor: 'text-green-500' },
-        { icon: Trash2, label: 'Resolved Tickets', value: '5487', bgColor: 'bg-red-100', iconColor: 'text-red-500' },
-    ];
+    const fetchTickets = async () => {
+        try {
+            const res = await axios.get(`${baseUrl}/tickets/`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+            });
+
+            if (res.data.success && res.data.tickets) {
+                const mappedTickets = res.data.tickets.map((ticket) => ({
+                    id: `#${ticket._id.slice(-5)}`,
+                    reporter: ticket.raisedBy?.name || 'NA',
+                    subject: ticket.subject,
+                    status: ticket.status,
+                    startDate: new Date(ticket.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-'),
+                    role: ticket.role || ticket.raisedBy?.role || 'N/A',
+                    priority: ticket.priority,
+                    description: ticket.description,
+                    email: ticket.raisedBy?.email || '',
+                    assignedTo: ticket.assignedTo,
+                    _id: ticket._id,
+                    raisedBy: ticket.raisedBy,
+                }));
+
+                setAllTickets(mappedTickets);
+            }
+        } catch (error) {
+            console.log('Error fetching tickets:', error);
+        }
+    };
 
     useEffect(() => {
-        const fetchTickets = async () => {
-            try {
-                const res = await axios.get(`${baseUrl}/tickets/`, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                });
-                console.log("hii", res.data);
-                
-                
-                if (res.data.success && res.data.tickets) {
-                    const mappedTickets = res.data.tickets.map(ticket => ({
-                        id: `#${ticket._id.slice(-5)}`,
-                        reporter: ticket.raisedBy?.name || 'NA',
-                        avatar: '',
-                        subject: ticket.subject,
-                        status: ticket.status,
-                        startDate: new Date(ticket.createdAt).toLocaleDateString('en-GB').replace(/\//g, '.'),
-                        dueDate: new Date(ticket.updatedAt).toLocaleDateString('en-GB').replace(/\//g, '.'),
-                        role: ticket.role || ticket.raisedBy?.role || 'N/A',
-                        priority: ticket.priority,
-                        description: ticket.description,
-                        email: ticket.raisedBy?.email || '',
-                        assignedTo: ticket.assignedTo,
-                        _id: ticket._id,
-                        raisedBy: ticket.raisedBy
-                    }));
-                    setAllTickets(mappedTickets);
-                    console.log('Mapped tickets:', mappedTickets);
-                }
-            } catch (error) {
-                console.log('Error fetching tickets:', error);
-            }
-        }
-
         fetchTickets();
-    }, [])
-
-
-    const filteredTickets = useMemo(() => {
-    let filtered = allTickets;
-
-    if (activeTab === 'Pending') {
-        filtered = filtered.filter(ticket => ticket.status === 'Open');
-    } else if (activeTab === 'Closed') {
-        filtered = filtered.filter(ticket => ticket.status === 'Closed');
-    } else if (activeTab === 'Resolved') {
-        filtered = filtered.filter(ticket => ticket.status === 'Resolved');
-    }
-
-    if (searchId) {
-        filtered = filtered.filter(ticket =>
-            ticket.id.toLowerCase().includes(searchId.toLowerCase())
-        );
-    }
-
-    // Reverse to show latest first
-    return [...filtered].reverse();
-}, [activeTab, searchId, allTickets]);
-
-    const itemsPerPage = 7;
-    const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
-    const paginatedTickets = filteredTickets.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    }, []);
 
     const calculatedStats = useMemo(() => {
-        const pending = allTickets.filter(t => t.status === 'Open').length;
-        const closed = allTickets.filter(t => t.status === 'Closed').length;
-        const resolved = allTickets.filter(t => t.status === 'Resolved').length;
-
-        return {
-            total: allTickets.length,
-            pending,
-            closed,
-            resolved
-        };
+        const pending = allTickets.filter((t) => t.status === 'Open').length;
+        const closed = allTickets.filter((t) => t.status === 'Closed').length;
+        return { total: allTickets.length, pending, closed };
     }, [allTickets]);
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Open':
-                return 'bg-yellow-100 text-yellow-600';
-            case 'Closed':
-                return 'bg-green-100 text-green-600';
-            case 'Resolved':
-                return 'bg-blue-100 text-blue-600';
-            default:
-                return 'bg-gray-100 text-gray-600';
+    const filteredTickets = useMemo(() => {
+        let filtered = allTickets;
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter((ticket) =>
+                ticket.id.toLowerCase().includes(query) ||
+                ticket.reporter.toLowerCase().includes(query) ||
+                ticket.subject.toLowerCase().includes(query) ||
+                ticket.role.toLowerCase().includes(query) ||
+                (ticket.priority || '').toLowerCase().includes(query) ||
+                ticket.status.toLowerCase().includes(query)
+            );
         }
+
+        return [...filtered].reverse();
+    }, [searchQuery, allTickets]);
+
+    const itemsPerPage = 8;
+    const totalPages = Math.ceil(filteredTickets.length / itemsPerPage) || 1;
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [totalPages, currentPage]);
+
+    const paginatedTickets = filteredTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const openDetail = (ticket) => {
+        setSelectedTicket(ticket);
+        setIsDetailOpen(true);
     };
 
-    const getInitials = (name) => {
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const closeDetail = () => {
+        setIsDetailOpen(false);
+        setSelectedTicket(null);
     };
 
-    const handlePageChange = (page) => {
-        if (page >= 1 && page <= totalPages) {
-            setCurrentPage(page);
-        }
+    const handleLocalTicketUpdate = ({ _id, status }) => {
+        setAllTickets((prev) => prev.map((t) => (t._id === _id ? { ...t, status } : t)));
+        setSelectedTicket((prev) => (prev && prev._id === _id ? { ...prev, status } : prev));
     };
 
-    const handleTabChange = (tab) => {
-        setActiveTab(tab);
-        setCurrentPage(1);
-    };
+    const statCards = [
+        {
+            label: 'Total Tickets',
+            value: calculatedStats.total,
+            iconImage: TT,
+            image: ISL,
+            valueColor: 'text-indigo-600',
+        },
+        {
+            label: 'Pending Tickets',
+            value: calculatedStats.pending,
+            iconImage: APT,
+            image: TAL,
+            valueColor: 'text-rose-500',
+        },
+        {
+            label: 'Closed Tickets',
+            value: calculatedStats.closed,
+            iconImage: CT,
+            image: ISL,
+            valueColor: 'text-indigo-600',
+        },
+    ];
 
     return (
         <div className="min-h-screen">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {stats.map((stat, index) => {
-                        const StatIcon = stat.icon;
-                        let value = stat.value;
-                        if (stat.label === 'Total Tickets') value = calculatedStats.total;
-                        else if (stat.label === 'Pending Tickets') value = calculatedStats.pending;
-                        else if (stat.label === 'Closed Tickets') value = calculatedStats.closed;
-                        else if (stat.label === 'Resolved Tickets') value = calculatedStats.resolved;
+            <div className="max-w-6xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {statCards.map((s, idx) => {
+                        const words = s.label.split(' ');
+                        const firstWord = words[0];
+                        const restWords = words.slice(1).join(' ');
 
                         return (
-                            <div key={index} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-center gap-4">
-                                    <div className={`${stat.bgColor} p-3 rounded-xl`}>
-                                        <StatIcon className={`w-6 h-6 ${stat.iconColor}`} />
+                            <div key={idx} className="rounded-xl bg-white px-5 py-4 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-lg font-medium text-gray-500">
+                                        {firstWord}
+                                        {restWords && (
+                                            <>
+                                                <br />
+                                                {restWords}
+                                            </>
+                                        )}
+                                    </p>
+                                    <div className="h-9 w-9">
+                                        <img src={s.iconImage} alt="" className="h-full w-full object-contain" />
                                     </div>
-                                    <div>
-                                        <div className="text-2xl font-bold text-gray-900">{value}</div>
-                                        <div className="text-sm text-gray-500">{stat.label}</div>
-                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between">
+                                    <p className={`text-3xl font-bold ${s.valueColor}`}>{s.value}</p>
+                                    <img src={s.image} alt="" className="h-8" />
                                 </div>
                             </div>
                         );
                     })}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-200">
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <div className="relative flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Search by ID"
-                                        value={searchId}
-                                        onChange={(e) => setSearchId(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                </div>
-                                {/* <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                    <SlidersHorizontal className="w-5 h-5" />
-                                    <span>Filters</span>
-                                </button> */}
-                            </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                    <div className="text-base font-semibold text-gray-900">Ticket List</div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <input
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                placeholder="Search by ID, name, subject..."
+                                className="w-[200px] sm:w-[260px] h-9 rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            />
+                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         </div>
 
-                        <div className="flex gap-6 px-4 border-b border-gray-200 overflow-x-auto">
-                            <button
-                                onClick={() => handleTabChange('All')}
-                                className={`py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'All' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                All ({calculatedStats.total})
-                            </button>
-                            <button
-                                onClick={() => handleTabChange('Pending')}
-                                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Pending' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-                                Pending ({calculatedStats.pending})
-                            </button>
-                            <button
-                                onClick={() => handleTabChange('Closed')}
-                                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Closed' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                                Closed ({calculatedStats.closed})
-                            </button>
-                            <button
-                                onClick={() => handleTabChange('Resolved')}
-                                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'Resolved' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                                Resolved ({calculatedStats.resolved})
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setIsRaiseOpen(true)}
+                            className="h-9 px-4 rounded-md bg-[#6D5BD0] text-white text-sm font-medium shadow-sm hover:opacity-95"
+                        >
+                            Raise Tickets
+                        </button>
+                    </div>
+                </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr.No.</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                                        {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th> */}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {paginatedTickets.length > 0 ? (
-                                        paginatedTickets.map((ticket, index) => (
-                                            <tr
-                                                key={`${ticket.id}-${index}`}
-                                                className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                                onClick={() => setSelectedTicket(ticket)}
-                                            >
-                                                <td className="px-4 py-4 text-sm text-gray-900">{(currentPage - 1) * itemsPerPage + index + 1}.</td>
-                                                <td className="px-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                                                            {getInitials(ticket.reporter)}
-                                                        </div>
-                                                        <span className="text-sm text-gray-900 hidden sm:inline">{ticket.reporter}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate">{ticket.role}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate">{ticket.subject}</td>
-                                                <td className="px-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                                                            {ticket.status}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-500">{ticket.startDate}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500">{ticket.dueDate}</td>
-                                                {/* <td className="px-4 py-4">
+                <div className="bg-white rounded-xl border border-[#D7D0FF] shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-[#F3F2FF]">
+                                <tr className="text-xs font-semibold text-gray-700">
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Serial No.</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Raised By</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Role</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Subject</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Created on</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Priority</th>
+                                    <th className="px-5 py-4 text-left whitespace-nowrap">Status</th>
+                                    <th className="px-5 py-4 text-center whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-gray-100">
+                                {paginatedTickets.length ? (
+                                    paginatedTickets.map((t, idx) => (
+                                        <tr key={`${t._id}-${idx}`} className="hover:bg-[#FAFAFF]">
+                                            <td className="px-5 py-4 text-sm text-gray-700">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
+                                            <td className="px-5 py-4 text-sm text-gray-800">{t.reporter}</td>
+                                            <td className="px-5 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRolePill(t.role)}`}>{t.role}</span>
+                                            </td>
+                                            <td className="px-5 py-4 text-sm text-gray-800 max-w-[280px] truncate">{t.subject}</td>
+                                            <td className="px-5 py-4 text-sm text-gray-700">{t.startDate}</td>
+                                            <td className="px-5 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityPill(t.priority)}`}>
+                                                    {t.priority || 'Normal'}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <span className={`px-4 py-1 rounded-full text-xs font-medium ${getStatusPill(t.status)}`}>
+                                                    {getStatusLabel(t.status)}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex justify-center">
                                                     <button
-                                                        className="p-1 rounded-sm hover:bg-red-100 transition-colors group border border-red-500"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                        }}
+                                                        onClick={() => openDetail(t)}
+                                                        className="w-8 h-8 rounded-full border border-[#D7D0FF] bg-[#F3F2FF] text-[#6D5BD0] grid place-items-center hover:bg-[#ECEAFF]"
                                                     >
-                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                        <Eye className="w-4 h-4" />
                                                     </button>
-                                                </td> */}
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                                                No tickets found
+                                                </div>
                                             </td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {totalPages > 1 && (
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                            />
-                        )}
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-500">
+                                            No tickets found
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
 
-                    <SupportTicketDetail
-                        selectedTicket={selectedTicket} 
-                        getStatusColor={getStatusColor}
-                    />
+                    {filteredTickets.length > 0 && totalPages > 1 && (
+                        <div className="py-4 flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                className="w-8 h-8 rounded-md border border-[#D7D0FF] text-[#6D5BD0] grid place-items-center bg-white disabled:opacity-40"
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            {Array.from({ length: totalPages }).map((_, i) => {
+                                const page = i + 1;
+                                const active = page === currentPage;
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-8 h-8 rounded-md border grid place-items-center text-sm ${active
+                                            ? 'bg-[#6D5BD0] text-white border-[#6D5BD0]'
+                                            : 'bg-white text-[#6D5BD0] border-[#D7D0FF] hover:bg-[#F3F2FF]'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            })}
+
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                className="w-8 h-8 rounded-md border border-[#D7D0FF] text-[#6D5BD0] grid place-items-center bg-white disabled:opacity-40"
+                                disabled={currentPage === totalPages}
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            <SupportTicketDetail
+                isOpen={isDetailOpen}
+                onClose={closeDetail}
+                selectedTicket={selectedTicket}
+                onTicketUpdated={handleLocalTicketUpdate}
+            />
+
+            <RaiseTickets
+                isOpen={isRaiseOpen}
+                onClose={() => setIsRaiseOpen(false)}
+                onSuccess={() => fetchTickets()}
+            />
         </div>
     );
 };
