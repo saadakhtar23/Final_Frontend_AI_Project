@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { baseUrl } from '../../utils/ApiConstants';
 import SpinLoader from '../../components/SpinLoader';
-import arrow from "../../img/double-arrow.png";
 
 export default function AssignedRecruiters() {
   const navigate = useNavigate();
@@ -151,19 +150,19 @@ export default function AssignedRecruiters() {
                 <tr className="text-left">
                   <th className="px-6 py-4 text-[13px] font-semibold text-[#374151] w-[120px]">
                     <div className="inline-flex items-center gap-2">
-                      Serial No. <img src={arrow} size={14} />
+                      Serial No.
                     </div>
                   </th>
 
                   <th className="px-6 py-4 text-[13px] font-semibold text-[#374151] w-[280px]">
                     <div className="inline-flex items-center gap-2">
-                      Job Title <img src={arrow} size={14} />
+                      Job Title
                     </div>
                   </th>
 
                   <th className="px-6 py-4 text-[13px] font-semibold text-[#374151] w-[180px]">
                     <div className="inline-flex items-center gap-2">
-                      Dead-line <img src={arrow} size={14} />
+                      Dead-line
                     </div>
                   </th>
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Eye, Trash2, X } from 'lucide-react';
 import Pagination from '../components/LandingPage/Pagination';
@@ -7,6 +6,7 @@ import SpinLoader from '../components/SpinLoader';
 import { baseUrl } from '../utils/ApiConstants';
 import { pythonUrl } from '../utils/ApiConstants';
 import { testApi } from './api/tests';
+import playicon from "../img/play.png"
 
 function Results() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +25,7 @@ function Results() {
   const [attemptsError, setAttemptsError] = useState(null);
   const mountedRef = useRef(true);
 
-  const rowsPerPage = 5;
+  const rowsPerPage = 8;
 
   const computeAttemptScore = (attempt) => {
     try {
@@ -103,44 +103,75 @@ function Results() {
       const data = await res.json();
       console.log("[Result] finalized-tests result:", data);
 
-        // `data` is expected to be an array of tests from get_finalized_test
-        const rawArr = Array.isArray(data) ? data : [];
-        // Count occurrences per job_id (or question_set_id fallback)
-        const counts = rawArr.reduce((acc, t) => {
-          const key = t.job_id || t.question_set_id || '';
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {});
-        const counters = {};
+      const rawArr = Array.isArray(data) ? data : [];
+      const counts = rawArr.reduce((acc, t) => {
+        const key = t.job_id || t.question_set_id || '';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const counters = {};
 
-        const mapped = rawArr.map((t, idx) => {
-          const key = t.job_id || t.question_set_id || '';
-          counters[key] = (counters[key] || 0) + 1;
-          const groupCount = counts[key] || 0;
-          const baseTitle = t.title || 'Untitled Test';
-          const numberedTitle = groupCount > 1 ? `${baseTitle} - Test ${counters[key]}` : baseTitle;
+      // Pehle basic mapping karo
+      const mapped = rawArr.map((t, idx) => {
+        const key = t.job_id || t.question_set_id || '';
+        counters[key] = (counters[key] || 0) + 1;
+        const groupCount = counts[key] || 0;
+        const baseTitle = t.title || 'Untitled Test';
+        const numberedTitle = groupCount > 1 ? `${baseTitle} - Test ${counters[key]}` : baseTitle;
 
-          return {
-            id: idx + 1,
-            jobId: t.job_id ? `#${t.job_id}` : `#${(t.question_set_id || '').slice(0, 6)}`,
-            jobTitle: numberedTitle,
-            totalCandidates: t.candidate_id ? (String(t.candidate_id).split(',').filter(Boolean).length) : 0,
-            testDate: formatDate(t.exam_date || t.createdAt),
-            createdAt: formatDate(t.createdAt),
-            raw: t
-          };
-        });
-        console.log('[Results] mapped finalized jobs count:', mapped.length);
-        console.log('[Results] mapped finalized jobs sample:', mapped.slice(0, 5));
-        console.log('[Results] finalized counts:', counts);
-        const sortedMapped = mapped.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
-        if (mountedRef.current) setJobs(sortedMapped);
-      } catch (e) {
-        console.error('Failed loading finalized tests', e);
-        setError((e && e.message) ? String(e.message) : 'Failed loading finalized tests');
-      } finally {
-        setLoading(false);
-      }
+        return {
+          id: idx + 1,
+          jobId: t.job_id ? `#${t.job_id}` : `#${(t.question_set_id || '').slice(0, 6)}`,
+          jobTitle: numberedTitle,
+          totalCandidates: 0, // baad me update hoga
+          testDate: formatDate(t.exam_date || t.createdAt),
+          createdAt: formatDate(t.createdAt),
+          raw: t
+        };
+      });
+
+      // Ab har test ke liye attempts API call karke actual count lo
+      const mappedWithCounts = await Promise.all(
+        mapped.map(async (job) => {
+          try {
+            if (!job.raw || !job.raw.question_set_id) return job;
+            const qsid = encodeURIComponent(job.raw.question_set_id);
+            const attRes = await fetch(`${pythonUrl}/v1/test/attempts/${qsid}`);
+            if (!attRes.ok) return job;
+            const attData = await attRes.json();
+
+            let attemptsArr = [];
+            if (Array.isArray(attData)) {
+              attemptsArr = attData;
+            } else if (attData && Array.isArray(attData.attempts)) {
+              attemptsArr = attData.attempts;
+            }
+
+            // Unique candidates count karo
+            const uniqueCandidates = new Set(
+              attemptsArr.map(a => a.candidate_id).filter(Boolean)
+            );
+
+            return {
+              ...job,
+              totalCandidates: uniqueCandidates.size
+            };
+          } catch (e) {
+            console.error('Failed to fetch attempts count for', job.jobTitle, e);
+            return job;
+          }
+        })
+      );
+
+      console.log('[Results] mapped with actual counts:', mappedWithCounts);
+      const sortedMapped = mappedWithCounts.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
+      if (mountedRef.current) setJobs(sortedMapped);
+    } catch (e) {
+      console.error('Failed loading finalized tests', e);
+      setError((e && e.message) ? String(e.message) : 'Failed loading finalized tests');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -406,10 +437,14 @@ function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className={`${(loading || attemptsLoading) ? 'filter blur-sm pointer-events-none' : ''} max-w-7xl mx-auto`}>
+    <div className="min-h-screen">
+      <div className={`${(loading || attemptsLoading) ? 'filter blur-sm pointer-events-none' : ''} max-w-[1100px] mx-auto`}>
 
-        <div className="flex flex-col sm:flex-row justify-between items-stretch gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-5">
+
+          <div>
+            <h1 className="text-[28px] font-semibold text-[#1f1f1f]">Assessment Details</h1>
+          </div>
 
           {/* <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 flex-1">
             <div className="bg-blue-100 rounded-2xl p-6 sm:p-8 shadow-sm flex-1">
@@ -426,66 +461,76 @@ function Results() {
           </div> */}
 
           <div className="flex items-end">
-            <div className="relative w-full sm:w-[280px]">
+            <div className="relative w-full sm:w-[260px]">
               <input
                 type="text"
-                placeholder="Search by Job Title"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-4 pr-12 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#d7d7df] bg-white text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7b61ff] focus:border-transparent"
               />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <button className="hidden absolute right-2 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
                 <Search size={20} />
               </button>
-
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-[18px] border border-[#d7c9ff] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
 
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[900px]">
 
-              <thead className="bg-gray-200">
+              <thead className="bg-[#f3f0fb]">
                 <tr>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">S.No</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Job Title</th>
-                  {/* <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Total Candidate</th> */}
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Test Date</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Created At</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="px-5 py-4 text-left text-[15px] font-semibold text-[#222]">Serial No.</th>
+                  <th className="px-5 py-4 text-left text-[15px] font-semibold text-[#222]">Assessment Name</th>
+                  <th className="px-5 py-4 text-left text-[15px] font-semibold text-[#222]">Created On</th>
+                  <th className="px-5 py-4 text-left text-[15px] font-semibold text-[#222]">Test Date</th>
+                  <th className="px-5 py-4 text-center text-[15px] font-semibold text-[#222]">Candidate Numbers</th>
+                  <th className="px-5 py-4 text-center text-[15px] font-semibold text-[#222]">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {currentRows.length > 0 ? (
                   currentRows.map((job, index) => (
-                    <tr key={job.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
-                        {(indexOfFirstRow + index + 1)}.
+                    <tr key={job.id} className="hover:bg-[#faf9ff] transition-colors border-b border-[#ededf3] last:border-b-0">
+                      <td className="px-5 py-5 text-sm text-gray-700">
+                        {(indexOfFirstRow + index + 1)}
                       </td>
 
-                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">{job.jobTitle}</td>
+                      <td className="px-5 py-5 text-sm text-gray-800">{job.jobTitle}</td>
+
                       {/* <td className="px-4 py-4 border-b border-gray-300">
                         <span className="inline-flex items-center justify-center min-w-[60px] px-3 py-1 bg-green-200 text-green-800 text-sm font-medium rounded-full">
                           {job.totalCandidates}
                         </span>
                       </td> */}
-                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
-                        {job.testDate || 'N/A'}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
+
+                      <td className="px-5 py-5 text-sm text-gray-700">
                         {job.createdAt || 'N/A'}
                       </td>
-                      <td className="px-4 py-4 border-b border-gray-300">
-                        <div className="flex items-center gap-2">
+
+                      <td className="px-5 py-5 text-sm font-semibold text-[#6c5ce7]">
+                        {job.testDate || 'N/A'}
+                      </td>
+
+                      <td className="px-5 py-5 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[52px] px-4 py-1 bg-[#eef4ff] text-[#2f80ed] text-sm font-semibold rounded-full">
+                          {job.totalCandidates}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-5">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleViewResults(job)}
-                            className="p-2 text-blue-500 border border-blue-500 rounded hover:bg-blue-50 transition-colors"
+                            className="px-2 py-2 flex items-center justify-center text-[#6c5ce7] bg-[#f3efff] rounded-lg hover:bg-[#ebe4ff] transition-colors"
                             aria-label="View job"
                           >
                             <Eye size={16} />
@@ -503,7 +548,7 @@ function Results() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="text-center py-6 text-gray-500">
+                    <td colSpan="6" className="text-center py-10 text-gray-500">
                       No jobs found.
                     </td>
                   </tr>
@@ -512,7 +557,9 @@ function Results() {
             </table>
 
           </div>
+        </div>
 
+        <div className="pb-5">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -551,120 +598,254 @@ function Results() {
       )}
 
 
-      {showViewResults && selectedJob && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between p-4 border-b relative">
-              <h3 className="text-lg font-semibold">Test: {selectedJob.jobTitle}</h3>
-              <div className="flex items-center gap-2">
-                <button onClick={closeModal} className="px-3 py-1 bg-gray-100 rounded">Close</button>
-                <button onClick={closeModal} aria-label="Close" className="p-2 rounded bg-transparent hover:bg-gray-100">
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
+     {showViewResults && selectedJob && (
+  <div className="fixed inset-0 bg-black/35 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-[22px] shadow-[0_20px_60px_rgba(0,0,0,0.18)] max-w-[990px] w-full max-h-[80vh] overflow-hidden border border-[#ece7ff]">
+      <div className="flex items-center justify-between px-8 py-5 border-b border-[#f0ecff] bg-white">
+        <h3 className="text-[18px] font-semibold text-[#1f1f1f]">
+          {selectedJob.jobTitle}
+        </h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={closeModal}
+            className="hidden px-3 py-1.5 bg-gray-100 rounded-lg text-sm"
+          >
+            Close
+          </button>
+          <button
+            onClick={closeModal}
+            aria-label="Close"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#111] hover:bg-[#f5f5f8] transition-colors"
+          >
+            <X size={20} strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
 
-            <div className="p-4">
-              {attemptsLoading ? (
-                <div className="flex items-center gap-3"><SpinLoader /> <span>Loading attempts...</span></div>
-              ) : attemptsError ? (
-                <div className="p-4 text-center text-sm text-red-600">
-                  <div className="mb-3">{String(attemptsError)}</div>
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => handleViewResults(selectedJob)} className="px-3 py-2 bg-blue-600 text-white rounded">Retry</button>
-                    <button onClick={() => setAttemptsError(null)} className="px-3 py-2 bg-gray-100 rounded">Dismiss</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="p-2 text-left">S.No</th>
-                        <th className="p-2 text-left">Candidate</th>
-                        <th className="p-2 text-left">Email</th>
-                        <th className="p-2 text-left">Score</th>
-                        <th className="p-2 text-left">Tab Switches</th>
-                        <th className="p-2 text-left">Inactivities</th>
-                        <th className="p-2 text-left">Face Not Visible</th>
-                        <th className="p-2 text-left">Submitted At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selectedJob.attempts || []).length === 0 ? (
-                        <tr><td colSpan="8" className="p-4 text-center text-gray-500">No attempts found.</td></tr>
-                      ) : (
-                        selectedJob.attempts.map((a, i) => {
-                          // Prefer aggregated totalScore (from aggregation step). Fallback to summing results_data if missing.
-                          let score = '';
-                          try {
-                            if (a && Number.isFinite(a.totalScore)) {
-                              score = a.totalScore.toFixed ? a.totalScore.toFixed(2) : String(a.totalScore);
-                            } else {
-                              const rd = a.results_data;
-                              if (Array.isArray(rd)) {
-                                const s = rd.reduce((sum, it) => sum + (Number(it && it.score) || 0), 0);
-                                score = Number.isFinite(s) ? s.toFixed(2) : '';
-                              } else if (rd && typeof rd === 'number') {
-                                score = rd.toFixed ? rd.toFixed(2) : String(rd);
-                              }
-                            }
-                          } catch (e) {
-                            score = '';
-                          }
-
-                          const cand = a.candidate || {};
-                          // debug per-row candidate object
-                          console.log('Results.jsx: rendering attempt', { attempt: a, candidate: cand });
-                          // prefer full name, then first+last, then email as fallback
-                          const name = cand.name || `${cand.firstName || ''} ${cand.lastName || ''}`.trim() || cand.fullName || cand.username || a.candidate_id || 'N/A';
-                          const email = cand.email || cand.emailAddress || cand.contact_email || cand.username || 'N/A';
-                          const cid = a.candidate_id || a.candidate?.id || a.candidate_id || 'unknown';
-                          let displayScore = score;
-
-                          return (
-                            <>
-                              <tr key={a.candidate_id || i} className="border-b">
-                                <td className="p-2">{i+1}.</td>
-                                <td className="p-2">{name}</td>
-                                <td className="p-2">{email}</td>
-                                <td className="p-2">{displayScore}</td>
-                                <td className="p-2">{a.tab_switches ?? 0}</td>
-                                <td className="p-2">{a.inactivities ?? 0}</td>
-                                <td className="p-2">{a.face_not_visible ?? 0}</td>
-                                <td className="p-2 flex items-center gap-2">
-                                          <span>{a.created_at ? String(a.created_at).split('T')[0] : 'N/A'}</span>
-                                          {a.video_url && (
-                                            <button
-                                              onClick={() => {
-                                                try {
-                                                  const cid = a.candidate_id || a.candidate?.id || a.candidate?._id || a.candidate?.candidate_id || String(i);
-                                                  setPlayAttemptId(cid || String(i));
-                                                } catch (e) {
-                                                  console.error('Play click failed', e);
-                                                }
-                                              }}
-                                              className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                            >
-                                              Play Video
-                                            </button>
-                                          )}
-
-                                </td>
-                              </tr>
-
-                            </>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+      <div className="p-0">
+        {attemptsLoading ? (
+          <div className="flex items-center justify-center gap-3 py-10">
+            <SpinLoader />
+            <span className="text-sm text-gray-700">Loading attempts...</span>
+          </div>
+        ) : attemptsError ? (
+          <div className="p-6 text-center text-sm text-red-600">
+            <div className="mb-3">{String(attemptsError)}</div>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => handleViewResults(selectedJob)}
+                className="px-3 py-2 bg-blue-600 text-white rounded"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => setAttemptsError(null)}
+                className="px-3 py-2 bg-gray-100 rounded"
+              >
+                Dismiss
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full min-w-[920px] text-sm">
+              <thead className="bg-[#F5F5FF]">
+                <tr>
+                  <th className="px-8 py-5 text-left text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Serial No.
+                  </th>
+                  <th className="px-6 py-5 text-left text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Candidate Name
+                  </th>
+                  <th className="px-6 py-5 text-left text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Email ID
+                  </th>
+                  <th className="px-6 py-5 text-left text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Score
+                  </th>
+                  <th className="px-6 py-5 text-center text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Tab Switches
+                  </th>
+                  <th className="px-6 py-5 text-center text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    In-Activities
+                  </th>
+                  <th className="px-6 py-5 text-center text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Multi Face Detection
+                  </th>
+                  <th className="px-6 py-5 text-center text-[13px] font-semibold text-[#1f1f1f] whitespace-nowrap">
+                    Video
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {(selectedJob.attempts || []).length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="py-8 text-center text-gray-500">
+                      No attempts found.
+                    </td>
+                  </tr>
+                ) : (
+                  selectedJob.attempts.map((a, i) => {
+                    let score = '';
+                    try {
+                      if (a && Number.isFinite(a.totalScore)) {
+                        score = a.totalScore.toFixed ? a.totalScore.toFixed(2) : String(a.totalScore);
+                      } else {
+                        const rd = a.results_data;
+                        if (Array.isArray(rd)) {
+                          const s = rd.reduce((sum, it) => sum + (Number(it && it.score) || 0), 0);
+                          score = Number.isFinite(s) ? s.toFixed(2) : '';
+                        } else if (rd && typeof rd === 'number') {
+                          score = rd.toFixed ? rd.toFixed(2) : String(rd);
+                        }
+                      }
+                    } catch (e) {
+                      score = '';
+                    }
+
+                    const cand = a.candidate || {};
+                    console.log('Results.jsx: rendering attempt', { attempt: a, candidate: cand });
+                    const name =
+                      cand.name ||
+                      `${cand.firstName || ''} ${cand.lastName || ''}`.trim() ||
+                      cand.fullName ||
+                      cand.username ||
+                      a.candidate_id ||
+                      'N/A';
+                    const email =
+                      cand.email ||
+                      cand.emailAddress ||
+                      cand.contact_email ||
+                      cand.username ||
+                      'N/A';
+                    const cid = a.candidate_id || a.candidate?.id || a.candidate_id || 'unknown';
+                    let displayScore = score;
+
+                    return (
+                      <>
+                        <tr
+                          key={a.candidate_id || i}
+                          className="border-b border-[#efeff4] last:border-b-0"
+                        >
+                          <td className="px-8 py-5 text-[15px] font-medium text-[#1f1f1f]">
+                            {i + 1}
+                          </td>
+
+                          <td className="px-6 py-5 text-[15px] text-[#1f1f1f] whitespace-nowrap">
+                            {name}
+                          </td>
+
+                          <td className="px-6 py-5 text-[15px] text-[#1f1f1f] whitespace-nowrap">
+                            {email}
+                          </td>
+
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                              {(() => {
+                                const scoreNum = parseFloat(displayScore) || 0;
+                                const maxScore = 100;
+                                const percentage = Math.min((scoreNum / maxScore) * 100, 100);
+                                const isLow = percentage < 35;
+                                const strokeColor = isLow ? '#ef4444' : '#6c5ce7';
+                                const trackColor = isLow ? '#fecaca' : '#e8defd';
+                                const radius = 9;
+                                const circumference = 2 * Math.PI * radius;
+                                const dashOffset = circumference - (percentage / 100) * circumference;
+
+                                return (
+                                  <>
+                                    <span
+                                      className="text-[15px] leading-none font-semibold"
+                                      style={{ color: strokeColor }}
+                                    >
+                                      {displayScore}
+                                    </span>
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                      <circle
+                                        cx="12"
+                                        cy="12"
+                                        r={radius}
+                                        fill="none"
+                                        stroke={trackColor}
+                                        strokeWidth="3"
+                                      />
+                                      <circle
+                                        cx="12"
+                                        cy="12"
+                                        r={radius}
+                                        fill="none"
+                                        stroke={strokeColor}
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeDasharray={circumference}
+                                        strokeDashoffset={dashOffset}
+                                        transform="rotate(-90 12 12)"
+                                        style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                                      />
+                                    </svg>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-5 text-center">
+                            <span className="text-[15px] font-medium text-[#ff5c7a]">
+                              {a.tab_switches ?? 0}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-5 text-center">
+                            <span className="text-[15px] font-medium text-[#5b5eff]">
+                              {a.inactivities ?? 0}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-5 text-center">
+                            <span className="text-[15px] font-medium text-[#ff4f6d]">
+                              {a.face_not_visible ?? 0}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-5 text-center">
+                            {a.video_url ? (
+                              <button
+                                onClick={() => {
+                                  try {
+                                    const cid =
+                                      a.candidate_id ||
+                                      a.candidate?.id ||
+                                      a.candidate?._id ||
+                                      a.candidate?.candidate_id ||
+                                      String(i);
+                                    setPlayAttemptId(cid || String(i));
+                                  } catch (e) {
+                                    console.error('Play click failed', e);
+                                  }
+                                }}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-1.5 bg-gradient-to-r from-[#644CB6] to-[#9273F3] text-white text-[14px] font-medium rounded-full hover:bg-[#6b52ca] transition-colors"
+                              >
+                                <img src={playicon} alt="Video" className="" />
+                                Play
+                              </button>
+                            ) : (
+                              <span className="text-sm text-gray-400">N/A</span>
+                            )}
+                          </td>
+                        </tr>
+                      </>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
       {/* Video overlay */}
       {videoSrc && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4">

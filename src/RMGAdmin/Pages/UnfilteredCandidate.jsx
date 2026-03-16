@@ -82,7 +82,7 @@ export default function UnfilteredCandidate({ candidate, jobTitle, onClose }) {
   const remaining = skills.length - visibleSkills.length;
 
   return (
-    <div className="bg-white w-full max-w-[560px] rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-[90vh] overflow-y-auto">
+    <div className="bg-white w-full max-w-[450px] rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-[90vh] overflow-y-auto">
       <div className="px-6 pt-5 pb-4 border-b border-gray-100">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
