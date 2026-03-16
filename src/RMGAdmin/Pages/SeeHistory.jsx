@@ -4,7 +4,6 @@ import { useLocation, useParams } from "react-router-dom";
 import Pagination from "../../components/LandingPage/Pagination";
 import FilteredCandidate from "./FilteredCandidate";
 import UnfilteredCandidate from "./UnfilteredCandidate";
-import arrow from "../../img/double-arrow.png"
 
 async function fetchJDHistoryFromApi(jdId) {
     const res = await fetch(`/api/jds/history/${jdId}`, {
@@ -463,7 +462,7 @@ const SeeHistory = () => {
                                 </th>
                                 <th className="py-4 px-5">
                                     <div className="inline-flex items-center gap-1">
-                                        Job Title <img src={arrow} alt="" />
+                                        Job Title
                                     </div>
                                 </th>
                                 <th className="py-4 px-5">
@@ -478,12 +477,12 @@ const SeeHistory = () => {
                                 </th>
                                 <th className="py-4 px-5">
                                     <div className="inline-flex items-center gap-1">
-                                        Skills <img src={arrow} alt="" />
+                                        Skills 
                                     </div>
                                 </th>
                                 <th className="py-4 px-5 text-right">
                                     <div className="inline-flex items-center gap-1 justify-end w-full">
-                                        FitBit Score <img src={arrow} alt="" />
+                                        FitBit Score 
                                     </div>
                                 </th>
                                 <th className="py-4 px-5 text-center">Action</th>

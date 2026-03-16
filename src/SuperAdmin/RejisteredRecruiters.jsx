@@ -55,6 +55,7 @@ function RejisteredRecruiters() {
                 const response = await axios.get(`${superAdminBaseUrl}/company/`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
                 });
+                console.log(response.data);
 
                 const mapped = (response.data?.companies || []).map((company) => ({
                     _id: company._id,
@@ -212,7 +213,7 @@ function RejisteredRecruiters() {
                                         return (
                                             <tr key={register._id} className="hover:bg-[#FAFAFF]">
                                                 <td className="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">
-                                                    {register.id}
+                                                    {register.id}.
                                                 </td>
 
                                                 <td className="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">
@@ -300,18 +301,19 @@ function RejisteredRecruiters() {
             </div>
 
             {selectedRegister && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="relative py-5 px-6 border-b border-gray-100">
-                            <h2 className="text-center text-xl font-semibold text-gray-900">
-                                Information
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+                    <div className="bg-white rounded-[24px] max-w-[560px] w-full max-h-[95vh] overflow-y-auto shadow-xl">
+                        <div className="relative px-6 pt-5">
+                            <h2 className="text-[18px] font-semibold text-black">
+                                Company Details
                             </h2>
+
                             <button
                                 onClick={() => setSelectedRegister(null)}
-                                className="absolute right-5 top-5 text-gray-500 hover:text-gray-800"
+                                className="absolute right-5 top-5 text-black hover:opacity-70"
                             >
                                 <svg
-                                    className="w-6 h-6"
+                                    className="w-5 h-5"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -326,127 +328,147 @@ function RejisteredRecruiters() {
                             </button>
                         </div>
 
-                        <div className="px-6 space-y-6 py-6">
-                            <div className="bg-[#E9E9E9D9] rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Company Name:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.companyName}
-                                    </div>
-                                </div>
+                        <div className="px-6 pb-8">
+                            <div className="relative flex flex-col items-center pt-4 pb-10">
+                                <button className="absolute right-0 top-2 border border-[#4338CA] text-[#4338CA] rounded-full px-5 py-1.5 text-sm font-medium bg-white">
+                                    Edit
+                                </button>
 
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">Email:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.email}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Phone Number:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.phoneNumber}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Company Type:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.companyType}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        How many Employees do you have:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.employees}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        GST Number:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.gstNumber}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">Pan Number:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.panNumber}
-                                    </div>
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Type of Staffing:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.typeOfStaffing}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">Address 1:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.address1}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">Address 2:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.address2}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">City:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.city}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="text-sm text-gray-600 mb-1">State:</div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                        {selectedRegister.state}
-                                    </div>
+                                <div className="w-[130px] h-[130px] rounded-full bg-[#E7E1E1] flex items-center justify-center text-black text-4xl font-semibold">
+                                    {selectedRegister.companyName
+                                        ?.split(" ")
+                                        .filter(word => word.length > 0)
+                                        .slice(0, 2)
+                                        .map(word => word.charAt(0).toUpperCase())
+                                        .join("")}
                                 </div>
                             </div>
 
-                            <div className="bg-[#E9E9E9D9] rounded-xl p-6">
-                                <div className="text-sm text-gray-600 mb-3">Logo:</div>
-                                <div className="bg-white rounded-lg px-6 py-4 flex items-center justify-center border border-gray-200">
-                                    <div className="text-center">
-                                        {selectedRegister.logo && !logoError ? (
-                                            <img
-                                                src={selectedRegister.logo}
-                                                alt="Company Logo"
-                                                className="w-30 h-20 object-cover mx-auto mb-2"
-                                                onError={() => setLogoError(true)}
-                                            />
-                                        ) : (
-                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-green-400 rounded-lg mx-auto mb-2 flex items-center justify-center text-white text-2xl font-bold">
-                                                {selectedRegister.companyName
-                                                    ?.charAt(0)
-                                                    ?.toUpperCase()}
-                                            </div>
-                                        )}
-                                        <div className="text-xs text-gray-500">
-                                            {selectedRegister.companyName}
-                                        </div>
-                                    </div>
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Company Type
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.companyType}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Email
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.email}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div></div>
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Company Name
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.companyName}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Contact No.
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.phoneNumber}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        PAN No.
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.panNumber}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div></div>
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        GST Number
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.gstNumber}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        How many Employees
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.employees}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Type of Staffing
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.typeOfStaffing}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div></div>
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Address 1
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.address1}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16 mb-10">
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        Address 2
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.address2}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        State
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.state}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-16">
+                                <div></div>
+                                <div>
+                                    <h3 className="text-[15px] font-semibold text-black mb-6">
+                                        City
+                                    </h3>
+                                    <p className="text-[13px] text-[#555]">
+                                        {selectedRegister.city}
+                                    </p>
                                 </div>
                             </div>
                         </div>
