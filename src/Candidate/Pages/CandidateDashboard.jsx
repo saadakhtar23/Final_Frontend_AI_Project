@@ -781,9 +781,9 @@ const CandidateDashboard = () => {
                                             <span className={`absolute left-0 top-0 h-full w-1 rounded-full ${app.lineColor}`} />
                                             <div className="pl-3 space-y-0.5 flex-1">
                                                 <p className="text-xs sm:text-sm font-semibold text-slate-900">
-                                                    {truncateText(app.role, 30) || "Job Position"}
+                                                    {/* {truncateText(app.role, 30) || "Job Position"} */}
                                                 </p>
-                                                <p className="text-[10px] sm:text-xs text-slate-500">{app.company}</p>
+                                                <p className="text-[10px] lg:text-xs text-slate-500 font-bold">{app.company}</p>
                                                 <p className="text-[10px] text-slate-400 line-clamp-1">
                                                     {truncateText(app.jobSummary, 40)}
                                                 </p>
