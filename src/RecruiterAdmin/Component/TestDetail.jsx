@@ -1,121 +1,133 @@
-import { Info, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { X, ChevronDown, Clock, Calendar, Timer } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 
-function Calendar({ onSelect, selectedStart, selectedEnd }) {
+/** "9:30 AM" / "9:30AM" -> minutes from midnight */
+function parseTime12ToMinutes(t) {
+  if (!t || typeof t !== 'string') return null;
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const mins = parseInt(m[2], 10);
+  const period = m[3].toUpperCase();
+  if (Number.isNaN(h) || Number.isNaN(mins) || mins > 59) return null;
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  if (h > 23) return null;
+  return h * 60 + mins;
+}
+
+/** "9:30 AM" -> "09:30" for input[type=time] */
+function time12ToInput24(t) {
+  const mins = parseTime12ToMinutes(t);
+  if (mins == null) return '';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** "09:30" -> "9:30 AM" */
+function input24ToTime12(s24) {
+  if (!s24) return '';
+  const [hs, ms] = s24.split(':');
+  let h = parseInt(hs, 10);
+  const m = parseInt(ms, 10) || 0;
+  if (Number.isNaN(h)) return '';
+  const ap = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+function calendarDaysBetween(startStr, endStr) {
+  if (!startStr || !endStr) return 0;
+  const a = new Date(`${startStr}T12:00:00`);
+  const b = new Date(`${endStr}T12:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+function formatDuration(totalMinutes) {
+  if (totalMinutes == null || totalMinutes <= 0) return null;
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const rem = totalMinutes % (24 * 60);
+  const hours = Math.floor(rem / 60);
+  const minutes = rem % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+
+function CalendarPicker({ onSelect, selectedStart, selectedEnd }) {
   const [current, setCurrent] = useState(new Date());
 
-  const daysInMonth = new Date(
-    current.getFullYear(),
-    current.getMonth() + 1,
-    0
-  ).getDate();
-
-  const firstDay = (
-    new Date(current.getFullYear(), current.getMonth(), 1).getDay() + 6
-  ) % 7;
+  const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+  const firstDay = (new Date(current.getFullYear(), current.getMonth(), 1).getDay() + 6) % 7;
 
   let days = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
 
-  const goPrev = () =>
-    setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1));
-
-  const goNext = () =>
-    setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1));
+  const goPrev = () => setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1));
+  const goNext = () => setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1));
 
   const todayNum = new Date().setHours(0, 0, 0, 0);
   const now = new Date();
   const prevMonthEnd = new Date(current.getFullYear(), current.getMonth(), 0);
-  const disablePrev =
-    prevMonthEnd < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const disablePrev = prevMonthEnd < new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const toEnCA = (dateObj) => dateObj.toLocaleDateString('en-CA');
-  const parseLocalMidnight = (s) =>
-    s ? new Date(`${s}T00:00:00`) : null;
-
+  const parseLocalMidnight = (s) => (s ? new Date(`${s}T00:00:00`) : null);
   const startDateNum = selectedStart ? parseLocalMidnight(selectedStart).getTime() : null;
   const endDateNum = selectedEnd ? parseLocalMidnight(selectedEnd).getTime() : null;
-
+  
   return (
     <div className="p-4">
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-4">
         <button
           onClick={!disablePrev ? goPrev : undefined}
           disabled={disablePrev}
-          className={`px-2 py-1 rounded ${
-            disablePrev
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'hover:bg-gray-200'
-          }`}
+          className="p-3 text-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition"
         >
-          ◀
+          ‹
         </button>
 
-        <h2 className="font-bold text-gray-800">
-          {current.toLocaleString('default', { month: 'long' })}{' '}
-          {current.getFullYear()}
+        <h2 className="font-medium text-gray-700">
+          {current.toLocaleString('default', { month: 'long' })} {current.getFullYear()}
         </h2>
 
         <button
           onClick={goNext}
-          className="px-2 py-1 bg-white rounded-full shadow"
+          className="p-3 text-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition"
         >
-          ▶
+          ›
         </button>
       </div>
-
-      <div className="grid grid-cols-7 gap-2 text-xs text-center font-semibold text-gray-600 mb-2">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-          <div key={d}>{d}</div>
-        ))}
+      <div className="grid grid-cols-7 gap-1 text-xs text-center font-semibold text-gray-500 mb-2">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <div key={d}>{d}</div>)}
       </div>
-
-      <div className="grid grid-cols-7 gap-2 text-center">
+      <div className="grid grid-cols-7 gap-1 text-center">
         {days.map((d, index) => {
           if (!d) return <div key={index}></div>;
-
-          const currentDateObj = new Date(
-            current.getFullYear(),
-            current.getMonth(),
-            d
-          );
-
+          const currentDateObj = new Date(current.getFullYear(), current.getMonth(), d);
           const local = toEnCA(currentDateObj);
           const numeric = currentDateObj.setHours(0, 0, 0, 0);
-
           const isPast = numeric < todayNum;
           const isStart = selectedStart === local;
           const isEnd = selectedEnd === local;
-          const inRange =
-            startDateNum !== null &&
-            endDateNum !== null &&
+          const inRange = startDateNum !== null && endDateNum !== null &&
             numeric > Math.min(startDateNum, endDateNum) &&
             numeric < Math.max(startDateNum, endDateNum);
 
-          let classes = 'p-2 rounded-full transition w-full';
-
-          if (isPast) {
-            classes += ' bg-gray-200 text-gray-400 cursor-not-allowed';
-          } else if (isStart && isEnd) {
-            classes += ' bg-blue-600 text-white';
-          } else if (isStart) {
-            classes += ' bg-blue-600 text-white';
-          } else if (isEnd) {
-            classes += ' bg-blue-600 text-white';
-          } else if (inRange) {
-            classes += ' bg-blue-300 text-white';
-          } else {
-            classes += ' bg-blue-100 hover:bg-blue-300';
-          }
+          let classes = 'h-9 flex items-center justify-center text-sm transition';
+          if (isPast) classes += ' text-gray-300 cursor-not-allowed';
+          else if (isStart || isEnd) classes += ' bg-violet-600 text-white rounded-md';
+          else if (inRange) classes += ' bg-violet-100 text-gray-800 rounded-none';
+          else classes += ' hover:bg-violet-50 text-gray-700';
 
           return (
-            <button
-              key={index}
-              disabled={isPast}
-              onClick={() => onSelect(currentDateObj)}
-              className={classes}
-            >
+            <button key={index} disabled={isPast} onClick={() => onSelect(currentDateObj)} className={classes}>
               {d}
             </button>
           );
@@ -125,130 +137,107 @@ function Calendar({ onSelect, selectedStart, selectedEnd }) {
   );
 }
 
-export default function TestDetail({
-  formData,
-  onUpdate,
-  onNext,
-  onCancel,
-  loading,
-}) {
+export default function TestDetail({ formData, onUpdate, onNext, onCancel, loading }) {
   const [newSkill, setNewSkill] = useState('');
-
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [timeModalError, setTimeModalError] = useState('');
   const [selectedStart, setSelectedStart] = useState(formData.startDate || null);
   const [selectedEnd, setSelectedEnd] = useState(formData.endDate || null);
   const [selectedTime, setSelectedTime] = useState(formData.startTime || null);
   const [selectedEndTime, setSelectedEndTime] = useState(formData.endTime || null);
 
-  // Prefill role title and skills from job details if not already provided
   useEffect(() => {
     try {
       const job = formData.jobDetails || {};
       const offerTitle = job?.offerId?.jobTitle || job?.jobTitle || '';
       const jobSkills = job?.offerId?.skills || job?.skills || [];
-
-      if ((!formData.roleTitle || formData.roleTitle === '') && offerTitle) {
-        onUpdate({ roleTitle: offerTitle });
-      }
-
+      if ((!formData.roleTitle || formData.roleTitle === '') && offerTitle) onUpdate({ roleTitle: offerTitle });
       if ((!formData.skills || formData.skills.length === 0) && Array.isArray(jobSkills) && jobSkills.length > 0) {
         const skills = jobSkills.map(s => (typeof s === 'string' ? s : String(s)));
-        const skillLevels = skills.map((skill) => ({ skill, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 }));
+        const skillLevels = skills.map(skill => ({ skill, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 }));
         onUpdate({ skills, skillLevels });
       }
-    } catch (e) {
-      // ignore
-    }
-    // only run when jobDetails changes
+    } catch (e) { }
   }, [formData.jobDetails]);
 
-  // Generate time slots starting at next half-hour from now, in 30-minute steps until 5:00 PM
-  const format12 = (date) => {
-    const h = date.getHours();
-    const m = date.getMinutes();
-    const hour12 = h % 12 === 0 ? 12 : h % 12;
-    const minute = m.toString().padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    return `${hour12}:${minute} ${ampm}`;
-  };
-
-  // Start-time slots: same behaviour as before (starts from next half-hour from now)
-  const generateStartTimeSlots = (dateString) => {
-    // 1. Safety check: If no date is selected yet, return a full day or empty
-    if (!dateString) return [];
-
-    const now = new Date();
-    const selectedDate = new Date(`${dateString}T00:00:00`); // Parse as local time
-    const isToday = selectedDate.toDateString() === now.toDateString();
-
-    let start = new Date(selectedDate);
-
-    if (isToday) {
-      // Logic for Today: Start from the next half-hour increment
-      const minutes = now.getMinutes();
-      let addMinutes = minutes < 30 ? 30 - minutes : 60 - minutes;
-      start = new Date(now.getTime() + addMinutes * 60000);
-    } else {
-      // Logic for Future: Start at midnight
-      start.setHours(0, 0, 0, 0);
-    }
-
-    // Set end of the day boundary
-    const end = new Date(selectedDate);
-    end.setHours(23, 30, 0, 0);
-
-    const slots = [];
-    const cur = new Date(start);
-    cur.setSeconds(0, 0);
-
-    while (cur <= end) {
-      slots.push(format12(cur));
-      cur.setMinutes(cur.getMinutes() + 30);
-    }
-    return slots;
-  };
-
-
-  // End-time slots: full 24-hour range from 00:00 to 23:30
-  const generateFullDaySlots = () => {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const end = new Date(today.setHours(23, 30, 0, 0));
-
-    const slots = [];
-    const cur = new Date(start);
-    while (cur <= end) {
-      slots.push(format12(cur));
-      cur.setMinutes(cur.getMinutes() + 30);
-    }
-    return slots;
-  };
-
-  const startTimeSlots = generateStartTimeSlots(selectedStart);
-  const fullDaySlots = generateFullDaySlots();
-
   useEffect(() => {
-    if (showScheduleModal) {
-        setSelectedStart(formData.startDate || null);
-        setSelectedEnd(formData.endDate || null);
-        setSelectedTime(formData.startTime || null);
-        setSelectedEndTime(formData.endTime || null);
+    if (showDateModal || showTimeModal) {
+      setSelectedStart(formData.startDate || null);
+      setSelectedEnd(formData.endDate || null);
+      setSelectedTime(formData.startTime || null);
+      setSelectedEndTime(formData.endTime || null);
     }
-  }, [showScheduleModal, formData]);
+    if (showTimeModal) setTimeModalError('');
+  }, [showDateModal, showTimeModal, formData]);
 
-  // SKILL FUNCTIONS
+  // const format12 = (date) => {
+  //   const h = date.getHours(), m = date.getMinutes();
+  //   const hour12 = h % 12 === 0 ? 12 : h % 12;
+  //   return `${hour12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  // };
+  // const generateStartTimeSlots = (dateString) => {
+  //   const now = new Date();
+
+  //   let start;
+
+  //   if (!dateString) {
+  //     // If no date selected → start from current time
+  //     start = new Date(now);
+  //     const minutes = now.getMinutes();
+  //     let addMinutes = minutes < 30 ? 30 - minutes : 60 - minutes;
+  //     start = new Date(now.getTime() + addMinutes * 60000);
+  //   } else {
+  //     const selectedDate = new Date(`${dateString}T00:00:00`);
+  //     const isToday = selectedDate.toDateString() === now.toDateString();
+
+  //     start = new Date(selectedDate);
+
+  //     if (isToday) {
+  //       const minutes = now.getMinutes();
+  //       let addMinutes = minutes < 30 ? 30 - minutes : 60 - minutes;
+  //       start = new Date(now.getTime() + addMinutes * 60000);
+  //     } else {
+  //       start.setHours(0, 0, 0, 0);
+  //     }
+  //   }
+
+  //   const end = new Date(start);
+  //   end.setHours(23, 30, 0, 0);
+
+  //   const slots = [];
+  //   const cur = new Date(start);
+  //   cur.setSeconds(0, 0);
+
+  //   while (cur <= end) {
+  //     slots.push(format12(cur));
+  //     cur.setMinutes(cur.getMinutes() + 30);
+  //   }
+
+  //   return slots;
+  // };
+
+  // const generateFullDaySlots = () => {
+  //   const today = new Date();
+  //   const start = new Date(today.setHours(0, 0, 0, 0));
+  //   const end = new Date(today.setHours(23, 30, 0, 0));
+  //   const slots = [];
+  //   const cur = new Date(start);
+  //   while (cur <= end) { slots.push(format12(cur)); cur.setMinutes(cur.getMinutes() + 30); }
+  //   return slots;
+  // };
+
+  // const startTimeSlots = generateStartTimeSlots(selectedStart);
+  // const fullDaySlots = generateFullDaySlots();
+
   const addSkill = () => {
     const skillTrim = newSkill.trim().toLowerCase();
-    const existing = formData.skills.map((s) => s.toLowerCase());
-
+    const existing = formData.skills.map(s => s.toLowerCase());
     if (skillTrim && !existing.includes(skillTrim)) {
       const properCase = newSkill.trim();
       onUpdate({
         skills: [...formData.skills, properCase],
-        skillLevels: [
-          ...formData.skillLevels,
-          { skill: properCase, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 },
-        ],
+        skillLevels: [...formData.skillLevels, { skill: properCase, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 }],
       });
     }
     setNewSkill('');
@@ -256,26 +245,17 @@ export default function TestDetail({
 
   const removeSkill = (skillToRemove) => {
     onUpdate({
-      skills: formData.skills.filter((s) => s !== skillToRemove),
-      skillLevels: formData.skillLevels.filter((sl) => sl.skill !== skillToRemove),
+      skills: formData.skills.filter(s => s !== skillToRemove),
+      skillLevels: formData.skillLevels.filter(sl => sl.skill !== skillToRemove),
     });
   };
 
-  const updateSkillLevel = (skill, field, value) => {
-    onUpdate({
-      skillLevels: formData.skillLevels.map((sl) =>
-        sl.skill === skill ? { ...sl, [field]: value } : sl
-      ),
-    });
-  };
-
-  // Helper to set a field for a skill; creates skillLevel entry if missing
   const setSkillField = (skill, field, value) => {
     const existing = Array.isArray(formData.skillLevels) ? formData.skillLevels : [];
-    const found = existing.find((s) => s.skill === skill);
+    const found = existing.find(s => s.skill === skill);
     let updated;
     if (found) {
-      updated = existing.map((sl) => (sl.skill === skill ? { ...sl, [field]: value } : sl));
+      updated = existing.map(sl => sl.skill === skill ? { ...sl, [field]: value } : sl);
     } else {
       const base = { skill, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 };
       base[field] = value;
@@ -284,26 +264,16 @@ export default function TestDetail({
     onUpdate({ skillLevels: updated });
   };
 
-  const getTotalQuestions = () => {
-    return formData.skillLevels.reduce(
-      (sum, sl) =>
-        sum + (sl.mcq || 0) + (sl.coding || 0) + (sl.audio || 0) + (sl.video || 0),
-      0
-    );
-  };
+  const getTotalQuestions = () =>
+    formData.skillLevels.reduce((sum, sl) => sum + (sl.mcq || 0) + (sl.coding || 0) + (sl.audio || 0) + (sl.video || 0), 0);
 
-  // Ensure required fields are present before allowing generation
   const canGenerate = () => {
-    // role title must be provided
     if (!formData.roleTitle || String(formData.roleTitle).trim() === '') return false;
-    // at least one skill
     if (!formData.skills || !Array.isArray(formData.skills) || formData.skills.length === 0) return false;
-    // schedule must be set
     if (!formData.startDate || !formData.endDate || !formData.startTime || !formData.endTime) return false;
     return true;
   };
 
-  // AUTOMATICALLY TOGGLE START/END DATE SELECTION
   const handleDateSelect = (date) => {
     const localDate = date.toLocaleDateString('en-CA');
     if (!selectedStart || (selectedStart && selectedEnd)) {
@@ -319,297 +289,445 @@ export default function TestDetail({
     }
   };
 
+  // Format date for display like "23-02-26"
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    return dateStr.slice(2).replace(/-/g, '-');
+  };
+
+  const handleSaveTime = () => {
+    setTimeModalError('');
+    if (!selectedTime || !selectedEndTime) return;
+
+    const startM = parseTime12ToMinutes(selectedTime);
+    const endM = parseTime12ToMinutes(selectedEndTime);
+    if (startM == null || endM == null) {
+      setTimeModalError('Please choose valid start and end times.');
+      return;
+    }
+
+    const startDate = formData.startDate;
+    const endDate = formData.endDate;
+    const sameCalendarDay =
+      startDate && endDate && String(startDate) === String(endDate);
+
+    if (sameCalendarDay && endM <= startM) {
+      setTimeModalError(
+        'When the exam starts and ends on the same date, end time must be after start time.'
+      );
+      return;
+    }
+
+    const daySpan = calendarDaysBetween(startDate, endDate);
+    const totalMinutes = daySpan * 24 * 60 + (endM - startM);
+    if (totalMinutes <= 0) {
+      setTimeModalError('The overall schedule must end after it starts. Adjust dates or times.');
+      return;
+    }
+
+    onUpdate({
+      startTime: selectedTime,
+      endTime: selectedEndTime,
+    });
+    setShowTimeModal(false);
+  };
+
+  const getScheduleDurationLabel = useCallback(() => {
+    if (!selectedTime || !selectedEndTime) return null;
+    const startM = parseTime12ToMinutes(selectedTime);
+    const endM = parseTime12ToMinutes(selectedEndTime);
+    if (startM == null || endM == null) return null;
+    const startDate = formData.startDate;
+    const endDate = formData.endDate;
+    if (!startDate || !endDate) return null;
+    const daySpan = calendarDaysBetween(startDate, endDate);
+    const totalMinutes = daySpan * 24 * 60 + (endM - startM);
+    return formatDuration(totalMinutes);
+  }, [selectedTime, selectedEndTime, formData.startDate, formData.endDate]);
+
   return (
-    <div>
-      {/* INFO BOX */}
-      <div className="bg-[#DDEFFC] border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-        <Info className="text-blue-600 mt-0.5" size={20} />
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-1">Provide Role Information</h3>
-          <p className="text-sm text-gray-600">
-            Recruiters manage end-to-end hiring — from creating job descriptions to shortlisting candidates and managing assessments
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* STEP HEADER */}
+      <div className="w-full">
 
-      {/* FORM SECTION */}
-      <div className="bg-white rounded-xl shadow-md border-gray-300 p-4 sm:p-6 mb-6">
-        {/* ROLE TITLE */}
-        <div className="mb-4 sm:mb-6">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Role Title
-          </label>
-          <input
-            type="text"
-            value={formData.roleTitle || formData.jobDetails?.offerId?.jobTitle || formData.jobDetails?.jobTitle || ''}
-            onChange={(e) => onUpdate({ roleTitle: e.target.value })}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-            placeholder="e.g., UI/UX Designer"
-          />
-        </div>
 
-        {/* SKILLS */}
-        <div className="mb-4 sm:mb-6">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Skills
-          </label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {formData.skills.map((skill) => (
-              <span
-                key={skill}
-                className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full flex items-center gap-2 text-sm"
+
+        {/* MAIN FORM CONTAINER */}
+        <div className="mb-4">
+
+          {/* TOP ROW: ROLE, DATE, TIME */}
+          <div className="grid grid-cols-12 gap-4 mb-6">
+
+            {/* ROLE TITLE - Takes up the most space */}
+            <div className="col-span-12 md:col-span-6">
+              <label className="block text-sm font-medium text-gray-800 mb-3">
+                Role Title
+              </label>
+              <input
+                type="text"
+                value={formData.roleTitle || ""}
+                onChange={(e) => onUpdate({ roleTitle: e.target.value })}
+                placeholder="Front-end Developer"
+                className="w-full px-4 py-4 bg-gray-50/50 border  bg-white border-gray-100 rounded-xl text-sm text-gray-600 focus:ring-2 focus:ring-violet-200 outline-none transition-all"
+              />
+            </div>
+
+            {/* DATE DURATION */}
+            <div className="col-span-12 md:col-span-3">
+              <label className="block text-sm font-medium text-gray-800 mb-3">
+                Date Duration
+              </label>
+              <button
+                onClick={() => setShowDateModal(true)}
+                className="w-full flex items-center bg-white justify-between px-4 py-4 border border-gray-100 rounded-xl text-sm text-gray-600 hover:border-violet-300"
               >
-                {skill}
-                <button onClick={() => removeSkill(skill)}>
-                  <X size={14} />
+                <span>
+                  {formData.startDate && formData.endDate
+                    ? `${formatDisplayDate(formData.startDate)} to ${formatDisplayDate(formData.endDate)}`
+                    : "23-02-26 to 24-02-26"}
+                </span>
+                <Calendar size={18} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* TIME RANGE */}
+            <div className="col-span-12 md:col-span-3">
+              <label className="mb-2 block text-sm font-medium text-gray-800">Daily time window</label>
+              <button
+                type="button"
+                onClick={() => setShowTimeModal(true)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3.5 text-left shadow-sm transition-all hover:border-violet-300 hover:shadow-md"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-inner">
+                    <Clock size={18} strokeWidth={2.25} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Open — Close</p>
+                    <p className="truncate text-sm font-semibold text-gray-800">
+                      {formData.startTime && formData.endTime
+                        ? `${formData.startTime}  →  ${formData.endTime}`
+                        : 'Set start & end time'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown size={18} className="shrink-0 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* SKILLS SECTION */}
+          <div className="mt-8">
+            <label className="block text-sm font-medium text-gray-800 mb-3">Skills</label>
+
+            <div className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 min-h-[56px] flex flex-wrap gap-3 items-center">
+              {formData.skills.map(skill => (
+                <span key={skill} className="bg-violet-50 text-violet-600 px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-medium border border-violet-100">
+                  {skill.toLowerCase()}
+                  <button onClick={() => removeSkill(skill)} className="hover:text-violet-900 transition">
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+
+              <input
+                type="text"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSkill()}
+                className="flex-1 min-w-[150px]  outline-none text-sm text-gray-700 placeholder-gray-400"
+                placeholder=""
+              />
+            </div>
+
+            {/* SUGGESTED SKILLS (Matches the pill-style in your image) */}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {['PowerBI', 'adobe xd', 'React', 'Node.js'].filter(s =>
+                !formData.skills.map(x => x.toLowerCase()).includes(s.toLowerCase())
+              ).map(suggestion => (
+                <button
+                  key={suggestion}
+                  onClick={() => {/* add logic */ }}
+                  className="px-4 py-1.5 rounded-lg bg-gray-50 text-sm text-gray-600 hover:bg-gray-100 transition-colors border border-transparent active:border-gray-200"
+                >
+                  {suggestion}
                 </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* SKILL TABLE */}
+        {formData.skills.length > 0 && (
+          <div className="border border-violet-200 rounded-2xl overflow-hidden mb-6">
+
+            <div className="w-full overflow-x-auto">
+              <table className="w-full">
+
+                {/* TABLE HEADER */}
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['Skills', 'Level', 'MCQ', 'Coding', 'Audio', 'Video'].map(h => (
+                      <th
+                        key={h}
+                        className="px-6 py-4 text-left text-sm font-semibold text-gray-700"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                {/* TABLE BODY */}
+                <tbody className="divide-y divide-gray-100">
+                  {formData.skills.map((skill) => {
+
+                    const sl =
+                      (formData.skillLevels || []).find(s => s.skill === skill) ||
+                      { skill, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 };
+
+                    return (
+                      <tr key={skill} className="bg-white">
+
+                        {/* SKILL NAME */}
+                        <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                          {skill}
+                        </td>
+
+                        {/* LEVEL */}
+                        <td className="px-6 py-4">
+                          <div className="relative w-32">
+                            <select
+                              value={sl.level}
+                              onChange={(e) => setSkillField(skill, 'level', e.target.value)}
+                              className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-400 outline-none"
+                            >
+                              <option>Any</option>
+                              <option>Beginner</option>
+                              <option>Medium</option>
+                              <option>Advanced</option>
+                            </select>
+
+                            <ChevronDown
+                              size={14}
+                              className="absolute right-2 top-2.5 text-gray-400"
+                            />
+                          </div>
+                        </td>
+
+                        {/* QUESTION INPUTS */}
+                        {['mcq', 'coding', 'audio', 'video'].map(field => (
+                          <td key={field} className="px-6 py-4">
+
+                            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden w-24">
+
+                              <input
+                                type="number"
+                                min="0"
+                                value={sl[field] || 0}
+                                onChange={(e) => setSkillField(skill, field, parseInt(e.target.value) || 0)}
+                                className="w-full text-center text-sm py-2 outline-none"
+                              />
+
+                              <div className="flex flex-col border-l border-gray-200">
+
+                                <button
+                                  onClick={() => setSkillField(skill, field, (sl[field] || 0) + 1)}
+                                  className="px-2 text-xs text-gray-500 hover:bg-gray-100"
+                                >
+                                  ▲
+                                </button>
+
+                                <button
+                                  onClick={() => setSkillField(skill, field, Math.max(0, (sl[field] || 0) - 1))}
+                                  className="px-2 text-xs text-gray-500 hover:bg-gray-100"
+                                >
+                                  ▼
+                                </button>
+
+                              </div>
+
+                            </div>
+
+                          </td>
+                        ))}
+
+                      </tr>
+                    )
+                  })}
+                </tbody>
+
+              </table>
+            </div>
+
+
+            {/* FOOTER */}
+            {/* FOOTER */}
+            <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-xl mt-4">
+
+              <span className="text-base font-semibold text-gray-800">
+                Total Questions: {getTotalQuestions()}
               </span>
-            ))}
+
+              <div className="flex gap-3">
+
+                <button
+                  onClick={onCancel}
+                  className="px-6 py-2 border border-violet-400 text-violet-600 rounded-xl hover:bg-violet-50 transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={onNext}
+                  disabled={!canGenerate() || loading || getTotalQuestions() === 0}
+                  className="px-6 py-2 bg-gradient-to-r from-violet-600 to-indigo-400 text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Generating..." : "Generate"}
+                </button>
+
+              </div>
+
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-              placeholder="Add a skill"
-            />
-            <button
-              onClick={addSkill}
-              className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-700 transition rounded-lg"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* EXPERIENCE */}
-        {/* <div className="mb-4">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Experience (in years)
-          </label>
-          <input
-            type="number"
-            placeholder="e.g., 2 Years"
-            value={formData.experience || ''}
-            onChange={(e) => onUpdate({ experience: e.target.value })}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-          />
-        </div> */}
-
-        {/* WORK ARRANGEMENT */}
-        {/* <div className="mb-4">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Work Arrangement
-          </label>
-          <select
-            value={formData.workType || ''}
-            onChange={(e) => onUpdate({ workType: e.target.value })}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-          >
-            <option value="">Select</option>
-            <option value="remote">Remote</option>
-            <option value="on-site">On-Site</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-        </div> */}
-
-        {/* LOCATION */}
-        {/* <div className="mb-4">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Location
-          </label>
-          <input
-            type="text"
-            placeholder="e.g., Kolkata"
-            value={formData.location || ''}
-            onChange={(e) => onUpdate({ location: e.target.value })}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-          />
-        </div> */}
-
-        {/* COMPENSATION RANGE */}
-        {/* <div className="mb-4">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Annual Compensation (INR)
-          </label>
-          <div className="flex gap-3">
-            <input
-              type="number"
-              placeholder="Min Amount"
-              value={formData.minCompensation || ''}
-              onChange={(e) => onUpdate({ minCompensation: e.target.value })}
-              className="w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-            />
-            <input
-              type="number"
-              placeholder="Max Amount"
-              value={formData.maxCompensation || ''}
-              onChange={(e) => onUpdate({ maxCompensation: e.target.value })}
-              className="w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-500 outline-none transition"
-            />
-          </div>
-        </div> */}
-
-        {/* SCHEDULE BUTTON */}
-        <div className="mt-4">
-          <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-            Schedule Test Date
-          </label>
-          <button
-            type="button"
-            onClick={() => setShowScheduleModal(true)}
-            className="px-4 py-2 w-full bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            {selectedStart && selectedTime && selectedEnd && selectedEndTime
-              ? `${selectedStart} at ${selectedTime} → ${selectedEnd} at ${selectedEndTime}`
-              : 'Pick Date & Time'}
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* SKILL TABLE */}
-      {formData.skills.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md p-4 border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-100">
-                <tr>
-                  {['Skills','Level','MCQ','Coding','Audio','Video'].map((h) => (
-                    <th key={h} className="px-4 py-2 text-left">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {formData.skills.map((skill) => {
-                  const sl = (formData.skillLevels || []).find((s) => s.skill === skill) || { skill, level: 'Any', mcq: 0, coding: 0, audio: 0, video: 0 };
-                  return (
-                    <tr key={skill}>
-                      <td className="px-4 py-3">{skill}</td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={sl.level}
-                          onChange={(e) => setSkillField(skill, 'level', e.target.value)}
-                          className="border px-2 py-1 rounded"
-                        >
-                          <option>Any</option>
-                          <option>Beginner</option>
-                          <option>Medium</option>
-                          <option>Advanced</option>
-                        </select>
-                      </td>
-                      {['mcq','coding','audio','video'].map((field) => (
-                        <td key={field} className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            value={sl[field] || 0}
-                            onChange={(e) => setSkillField(skill, field, parseInt(e.target.value) || 0)}
-                            className="w-16 text-center border rounded px-2 py-1"
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      {showDateModal && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white w-[360px] rounded-2xl shadow-xl p-4">
 
-          <div className="flex justify-between items-center mt-3 bg-gray-50 px-4 py-3 rounded-xl">
-            <span className="font-semibold">Total Questions: {getTotalQuestions()}</span>
-            <div className="flex gap-3">
+      <div className="flex justify-between mb-3">
+        <h2 className="text-lg font-semibold">Select Date</h2>
+        <X onClick={() => setShowDateModal(false)} />
+      </div>
+
+      <CalendarPicker
+        selectedStart={selectedStart}
+        selectedEnd={selectedEnd}
+        onSelect={handleDateSelect}
+      />
+
+      <button
+        onClick={() => {
+          onUpdate({
+            startDate: selectedStart,
+            endDate: selectedEnd
+          });
+          setShowDateModal(false);
+        }}
+        className="w-full mt-4 py-2 bg-violet-600 text-white rounded-lg"
+      >
+        Save
+      </button>
+
+    </div>
+  </div>
+)}
+      {showTimeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-200/80">
+            <div className="relative bg-gradient-to-br from-violet-600 via-violet-600 to-indigo-600 px-6 py-5 text-white">
               <button
-                onClick={onCancel}
-                className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                type="button"
+                onClick={() => setShowTimeModal(false)}
+                className="absolute right-4 top-4 rounded-lg p-1.5 transition hover:bg-white/15"
+                aria-label="Close"
               >
-                Cancel
+                <X size={20} />
               </button>
-              <button
-                onClick={onNext}
-                disabled={!canGenerate() || loading || getTotalQuestions() === 0}
-                className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300"
-              >
-                {loading ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SCHEDULE MODAL */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-2xl p-6">
-            <h2 className="text-xl font-bold mb-4">Schedule Examination</h2>
-
-            {/* TIME PICKERS */}
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div>
-                <label className="block mb-1 font-semibold text-sm">Start Time</label>
-                <select
-                  value={selectedTime || ''}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full border rounded-lg p-2"
-                >
-                  <option value="">Select Start Time</option>
-                  {startTimeSlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-semibold text-sm">End Time</label>
-                <select
-                  value={selectedEndTime || ''}
-                  onChange={(e) => setSelectedEndTime(e.target.value)}
-                  className="w-full border rounded-lg p-2"
-                  disabled={!selectedTime}
-                >
-                  <option value="">Select End Time</option>
-                  {fullDaySlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-3 pr-10">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
+                  <Timer size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Exam hours</h2>
+                  <p className="text-sm text-violet-100">Daily window when candidates can take the test</p>
+                </div>
               </div>
             </div>
 
-            {/* CALENDAR */}
-            <Calendar
-              selectedStart={selectedStart}
-              selectedEnd={selectedEnd}
-              onSelect={handleDateSelect}
-              className="rounded-md border mt-6"
-            />
+            <div className="space-y-5 px-6 py-6">
+              {formData.startDate &&
+                formData.endDate &&
+                String(formData.startDate) === String(formData.endDate) && (
+                  <p className="rounded-xl border border-amber-200/90 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                    Same start and end date: <strong>end time must be after start time</strong>.
+                  </p>
+                )}
 
-            {/* ACTION BUTTONS */}
-            <div className="flex justify-end mt-6 gap-3">
-              <button
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg"
-                onClick={() => setShowScheduleModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-                disabled={!selectedStart || !selectedEnd || !selectedTime || !selectedEndTime}
-                onClick={() => {
-                    const payload = {
-                        startDate: selectedStart,
-                        startTime: selectedTime,
-                        endDate: selectedEnd,
-                        endTime: selectedEndTime,
-                    };
+              {(!formData.startDate || !formData.endDate) && (
+                <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                  Choose <strong>date duration</strong> first. If start and end are on{' '}
+                  <strong>different days</strong>, any clock times are allowed (e.g. 9:00 PM → 5:00 PM).
+                </p>
+              )}
 
-                    console.log("Schedule saved:", payload);
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block rounded-2xl border-2 border-gray-100 bg-gray-50/60 p-4 transition focus-within:border-violet-300 focus-within:bg-white focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-100/80">
+                  <span className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    <Clock className="h-3.5 w-3.5 text-violet-500" />
+                    Start
+                  </span>
+                  <input
+                    type="time"
+                    step={300}
+                    value={time12ToInput24(selectedTime)}
+                    onChange={(e) => setSelectedTime(input24ToTime12(e.target.value))}
+                    className="w-full cursor-pointer rounded-lg border-0 bg-transparent text-2xl font-semibold tabular-nums text-gray-900 outline-none [color-scheme:light]"
+                  />
+                  <span className="mt-1 block text-xs text-gray-400">{selectedTime || 'Not set'}</span>
+                </label>
 
-                    onUpdate(payload);
-                    setShowScheduleModal(false);
-                }}
-              >
-                Save Schedule
-              </button>
+                <label className="block rounded-2xl border-2 border-gray-100 bg-gray-50/60 p-4 transition focus-within:border-violet-300 focus-within:bg-white focus-within:shadow-md focus-within:ring-2 focus-within:ring-violet-100/80">
+                  <span className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                    End
+                  </span>
+                  <input
+                    type="time"
+                    step={300}
+                    value={time12ToInput24(selectedEndTime)}
+                    onChange={(e) => setSelectedEndTime(input24ToTime12(e.target.value))}
+                    className="w-full cursor-pointer rounded-lg border-0 bg-transparent text-2xl font-semibold tabular-nums text-gray-900 outline-none [color-scheme:light]"
+                  />
+                  <span className="mt-1 block text-xs text-gray-400">{selectedEndTime || 'Not set'}</span>
+                </label>
+              </div>
+
+              {timeModalError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {timeModalError}
+                </div>
+              )}
+
+              {getScheduleDurationLabel() && (
+                <div className="flex items-center justify-center gap-2 rounded-xl bg-violet-50 px-4 py-3 text-sm font-medium text-violet-900">
+                  <Timer className="h-4 w-4 shrink-0 opacity-80" />
+                  <span>
+                    Total schedule window:{' '}
+                    <span className="tabular-nums font-semibold">{getScheduleDurationLabel()}</span>
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowTimeModal(false)}
+                  className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTime}
+                  disabled={!selectedTime || !selectedEndTime}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-500 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Save times
+                </button>
+              </div>
             </div>
           </div>
         </div>

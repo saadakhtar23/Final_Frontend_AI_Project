@@ -1,24 +1,42 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { useLocation, useOutletContext } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { useParams } from 'react-router-dom';
 import { testApi } from '../../RecruiterAdmin/api/tests.js';
 import McqQuestion from '../../RecruiterAdmin/Component/McqQuestion.jsx';
 import CodingQuestion from '../../RecruiterAdmin/Component/CodingQuestion';
-import Timer from '../../RecruiterAdmin/Component/Timer.jsx';
-// uncomment the below line if candidate needs to login before giving test!!!
-// import UserEmail from '../instructions_page/UserEmail.jsx';
 import InstructionsPage from '../instructions_page/InstructionsPage.jsx';
 import ActivityMonitor from '../instructions_page/ActivityMonitor.jsx';
 import FaceDetection from '../instructions_page/FaceDetection.jsx';
 import AudioInterview from '../instructions_page/AudioInterview.jsx'; // adjust the path as needed
 import WebcamPreview from '../Component/WebcamPreview.jsx';
+import MicLevelWaveform from '../Component/MicLevelWaveform.jsx';
 import { emitViolation } from '../../RecruiterAdmin/api/socket.js';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { pythonUrl } from '../../utils/ApiConstants';
 
+function getFullscreenElement() {
+  return (
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.msFullscreenElement ||
+    null
+  );
+}
 
+async function requestDocumentFullscreen() {
+  const el = document.documentElement;
+  try {
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+  } catch (e) {
+    console.warn('GiveTest: requestFullscreen failed', e);
+  }
+}
+
+const FULLSCREEN_EXIT_GRACE_SEC = 45;
 
 // ------------------------------
 // Embedded WebCamRecorder (merged into GiveTest to avoid mount/unmount timing issues)
@@ -666,6 +684,7 @@ function syncVideoAnswersToAllAnswers(qaList, setAllAnswers) {
 const GiveTest = ({ jdId }) => {
   const { questionSetId } = useParams();
   const location = useLocation();
+  const { setHideSidebarForTest } = useOutletContext() || {};
 
   // Loading / data / error
   const [loading, setLoading] = useState(true);
@@ -695,7 +714,6 @@ const GiveTest = ({ jdId }) => {
   const [floatingPos, setFloatingPos] = useState({ x: 20, y: 80 });
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [hasVideoFrame, setHasVideoFrame] = useState(false);
-  const dragRef = useRef({ dragging: false, offsetX: 0, offsetY: 0 });
   const [tabSwitches, setTabSwitches] = useState(0);
   const faceEventRef = useRef(null);
   const webcamInterviewRef = useRef(null);
@@ -727,6 +745,33 @@ const GiveTest = ({ jdId }) => {
   const [videoDevices, setVideoDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
+  const [visitedQuestionIds, setVisitedQuestionIds] = useState(() => new Set());
+  /** { [stableQuestionKey]: true } — plain object so React always re-renders on toggle */
+  const [reviewMarks, setReviewMarks] = useState({});
+  const [questionGridPage, setQuestionGridPage] = useState(1);
+  const [candidateDisplayName] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('candidateData');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.name) return p.name;
+      }
+    } catch (e) {}
+    return userInfo.name;
+  });
+  const [assessmentJobTitle, setAssessmentJobTitle] = useState('Software Engineer Position');
+
+  const [showFullscreenExitModal, setShowFullscreenExitModal] = useState(false);
+  const [fullscreenGraceSeconds, setFullscreenGraceSeconds] = useState(null);
+  const hadFullscreenDuringExamRef = useRef(false);
+  const fullscreenPenaltyActiveRef = useRef(false);
+  const fullscreenExitTimeoutRef = useRef(null);
+  const fullscreenExitIntervalRef = useRef(null);
+  const submittingRef = useRef(false);
+
+  const QUESTIONS_GRID_PAGE_SIZE = 12;
+  const SECTION_TAB_ORDER = ['mcq', 'coding', 'audio', 'video'];
+
   // Recording state
   const [recordingStarted, setRecordingStarted] = useState(false);
   const recordingStartedRef = useRef(false);
@@ -756,6 +801,10 @@ const GiveTest = ({ jdId }) => {
   useEffect(() => {
     violationsRef.current = violations;
   }, [violations]);
+
+  useEffect(() => {
+    submittingRef.current = submitting;
+  }, [submitting]);
 
   // attach localStream to video element and cleanup on unmount
   useEffect(() => {
@@ -1197,26 +1246,6 @@ const GiveTest = ({ jdId }) => {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [testStarted, submitted, allAnswers, sections]);
 
-  // Consolidated debug logger for component state — use DevTools or button below
-  const logDebugState = () => {
-    try {
-      console.groupCollapsed('GiveTest Debug State');
-      console.log('mediaAllowed:', mediaAllowed);
-      console.log('testStarted:', testStarted, 'submitted:', submitted);
-      console.log('tabSwitches:', tabSwitches);
-      console.log('floatingPos:', floatingPos);
-      console.log('sections.length:', sections.length, 'currentSectionIndex:', currentSectionIndex, 'currentQuestionIndex:', currentQuestionIndex);
-      console.log('localStream:', localStream);
-      console.log('streamRef.current:', streamRef.current);
-      console.log('videoRef.current:', videoRef.current);
-      console.log('video.srcObject:', videoRef.current ? videoRef.current.srcObject : null);
-      console.log('allAnswers keys:', Object.keys(allAnswers || {}).length);
-      console.groupEnd();
-    } catch (e) {
-      console.warn('logDebugState failed', e);
-    }
-  };
-
   // Disable text selection & copy while test active
   useEffect(() => {
     if (!testStarted || submitted) return;
@@ -1304,9 +1333,42 @@ const GiveTest = ({ jdId }) => {
     fetchTest();
   }, [questionSetId]);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('jobData');
+      if (raw) {
+        const j = JSON.parse(raw);
+        const title = j.title || j.job_title || j.role || j.position;
+        if (title) setAssessmentJobTitle(String(title));
+      }
+    } catch (e) {}
+  }, []);
+
   const currentSection = sections[currentSectionIndex];
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
   const totalQuestionsInSection = currentSection?.questions.length || 0;
+
+  useEffect(() => {
+    if (currentQuestion?.id) {
+      setVisitedQuestionIds((prev) => new Set([...prev, currentQuestion.id]));
+    }
+  }, [currentQuestion?.id]);
+
+  useEffect(() => {
+    setQuestionGridPage(1);
+  }, [currentSectionIndex]);
+
+  useEffect(() => {
+    const hide = testStarted && step === 'test' && !submitted;
+    if (typeof setHideSidebarForTest === 'function') {
+      setHideSidebarForTest(hide);
+    }
+    return () => {
+      if (typeof setHideSidebarForTest === 'function') {
+        setHideSidebarForTest(false);
+      }
+    };
+  }, [testStarted, step, submitted, setHideSidebarForTest]);
 
   // Shared timer for the current question so it continues inside AudioInterview
   const [questionTimeLeft, setQuestionTimeLeft] = useState(null);
@@ -1336,11 +1398,141 @@ const GiveTest = ({ jdId }) => {
     }
   }, [questionTimeLeft]);
 
-  // clamp percent to [0,100] and compute section progress percent
-  const clampPercent = (v) => Math.max(0, Math.min(100, v));
-  const sectionPercent = totalQuestionsInSection
-    ? clampPercent(Math.round(((currentQuestionIndex + 1) / totalQuestionsInSection) * 100))
-    : 0;
+  const totalAssessmentMinutes = useMemo(() => {
+    let sec = 0;
+    for (const s of sections) {
+      for (const q of s.questions || []) {
+        sec += Number(q.time_limit) || 60;
+      }
+    }
+    return Math.max(1, Math.round(sec / 60));
+  }, [sections]);
+
+  const durationHeader =
+    totalAssessmentMinutes >= 60
+      ? `${Math.round(totalAssessmentMinutes / 60)}hr`
+      : `${totalAssessmentMinutes} min`;
+
+  const gridTotalPages = Math.max(1, Math.ceil(totalQuestionsInSection / QUESTIONS_GRID_PAGE_SIZE));
+  const gridPageClamped = Math.min(questionGridPage, gridTotalPages);
+  const gridSliceStart = (gridPageClamped - 1) * QUESTIONS_GRID_PAGE_SIZE;
+  const gridQuestionsSlice = (currentSection?.questions || []).slice(
+    gridSliceStart,
+    gridSliceStart + QUESTIONS_GRID_PAGE_SIZE
+  );
+
+  const isQuestionAnswered = (q) => {
+    if (!q) return false;
+    const a = allAnswers[q.id];
+    return a !== undefined && a !== null && String(a).trim() !== '';
+  };
+
+  const goToSectionFromTab = (type) => {
+    const idx = sections.findIndex((s) => s.type === type);
+    if (idx < 0) return;
+    if (idx > currentSectionIndex) {
+      toast.info('Finish this section to unlock the next part.');
+      return;
+    }
+    setCurrentSectionIndex(idx);
+    setCurrentQuestionIndex(0);
+  };
+
+  const getQuestionKey = (q, sectionIndex, questionIndex) => {
+    if (!q) return '';
+    const raw = q.id ?? q._id ?? q.question_id;
+    if (raw !== undefined && raw !== null && String(raw) !== '') return String(raw);
+    return `s${sectionIndex}-i${questionIndex}`;
+  };
+
+  const currentQReviewKey =
+    currentQuestion != null
+      ? getQuestionKey(currentQuestion, currentSectionIndex, currentQuestionIndex)
+      : '';
+  const isCurrentMarkedForReview = !!(currentQReviewKey && reviewMarks[currentQReviewKey]);
+
+  const toggleMarkReview = () => {
+    if (!currentQuestion) return;
+    const key = getQuestionKey(currentQuestion, currentSectionIndex, currentQuestionIndex);
+    if (!key) return;
+    setReviewMarks((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+        toast.info('Removed from review');
+      } else {
+        next[key] = true;
+        toast.success('Marked for review');
+      }
+      return next;
+    });
+  };
+
+  const handleSaveAndNext = () => {
+    if (
+      (currentSection?.type === 'mcq' ||
+        currentSection?.type === 'coding' ||
+        currentSection?.type === 'video') &&
+      currentQuestionIndex === totalQuestionsInSection - 1 &&
+      currentSectionIndex === sections.length - 1
+    ) {
+      if (submitting) return;
+      handleSubmitAllSections().catch((e) => console.warn('Submit failed', e));
+      return;
+    }
+
+    const hasVideoSection = sections.some((s) => s.type === 'video');
+
+    if (
+      hasVideoSection &&
+      currentSection?.type === 'video' &&
+      !showWebcamInterview &&
+      currentQuestionIndex === totalQuestionsInSection - 1
+    ) {
+      toast.error('Please complete the webcam interview before submitting.');
+      return;
+    }
+
+    if (currentSection?.type === 'audio') {
+      if (currentSectionIndex < sections.length - 1) {
+        setCompletedSections((prev) => new Set([...prev, currentSectionIndex]));
+        setCurrentSectionIndex((prev) => prev + 1);
+        setCurrentQuestionIndex(0);
+      } else if (audioInterviewDone) {
+        if (submitting) return;
+        handleSubmitAllSections().catch((e) => console.warn('Submit failed', e));
+      } else {
+        setAudioInterviewVisited(true);
+        setShowAudioInterview(true);
+      }
+      return;
+    }
+
+    handleNext();
+  };
+
+  const saveNextLabel = submitting
+    ? 'Submitting...'
+    : currentSection?.type === 'audio'
+      ? currentSectionIndex === sections.length - 1
+        ? audioInterviewDone
+          ? 'Submit Test'
+          : 'Visit Audio Interview'
+        : audioInterviewVisited
+          ? 'Go To Next Part'
+          : 'Visit Audio Interview'
+      : (currentSection?.type === 'mcq' ||
+            currentSection?.type === 'coding' ||
+            currentSection?.type === 'video') &&
+          currentQuestionIndex === totalQuestionsInSection - 1 &&
+          currentSectionIndex === sections.length - 1
+        ? 'Submit Test'
+        : currentQuestionIndex === totalQuestionsInSection - 1
+          ? 'Proceed to Next Section'
+          : 'Save & Next';
+
+  const saveNextDisabled =
+    submitting || (currentSection?.type === 'audio' && !audioInterviewVisited);
 
   // Handle single-question answer change
   const handleAnswerChange = (answer) => {
@@ -1398,6 +1590,20 @@ const GiveTest = ({ jdId }) => {
   // Submit all sections
   // options: { markComplete: boolean }
   const handleSubmitAllSections = async (answersOverride, options = {}) => {
+    try {
+      if (fullscreenExitTimeoutRef.current) {
+        clearTimeout(fullscreenExitTimeoutRef.current);
+        fullscreenExitTimeoutRef.current = null;
+      }
+      if (fullscreenExitIntervalRef.current) {
+        clearInterval(fullscreenExitIntervalRef.current);
+        fullscreenExitIntervalRef.current = null;
+      }
+      fullscreenPenaltyActiveRef.current = false;
+      setShowFullscreenExitModal(false);
+      setFullscreenGraceSeconds(null);
+    } catch (e) {}
+
     setSubmitting(true);
     try {
       // Before submitting, upload the recorded video if recording was started
@@ -1499,25 +1705,31 @@ const GiveTest = ({ jdId }) => {
       // expose for quick debugging in console
       try { window.__resolvedJobId = resolvedJobId; } catch (e) {}
 
-      for (const section of sections) {
+      for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+        const section = sections[sIdx];
         const answersSource = answersOverride || allAnswers;
 
-        const responses = section.questions.map((question) => ({
-          question_id: question.id,
-          question_type: question.type,
-          question_text:
-            question.prompt_text ||
-            question.content?.prompt_text ||
-            question.question ||
-            "",
+        const responses = section.questions.map((question, qIdx) => {
+          const qKey = getQuestionKey(question, sIdx, qIdx);
+          const qId = question.id ?? question._id ?? question.question_id;
+          return {
+            question_id: qId,
+            question_type: question.type,
+            question_text:
+              question.prompt_text ||
+              question.content?.prompt_text ||
+              question.question ||
+              '',
 
-          correct_answer:
-            question.correct_answer ||
-            question.content?.correct_answer ||
-            "N/A",
+            correct_answer:
+              question.correct_answer ||
+              question.content?.correct_answer ||
+              'N/A',
 
-          candidate_answer: answersSource[question.id] || ''
-        }));
+            candidate_answer: answersSource[qId] ?? answersSource[question.id] ?? '',
+            marked_for_review: !!reviewMarks[qKey],
+          };
+        });
 
         
 
@@ -1550,6 +1762,9 @@ const GiveTest = ({ jdId }) => {
 
       setSubmissionResults(results);
       setSubmitted(true);
+      try {
+        sessionStorage.removeItem('exam_expects_fullscreen');
+      } catch (e) {}
       toast.success("Test submitted successfully!");
 
       // STOP RECORDING + MONITORING AFTER SUBMIT
@@ -1605,6 +1820,114 @@ const GiveTest = ({ jdId }) => {
       setSubmitting(false);
     }
   };
+
+  const handleSubmitAllSectionsRef = useRef(handleSubmitAllSections);
+  handleSubmitAllSectionsRef.current = handleSubmitAllSections;
+
+  useEffect(() => {
+    const examLive = testStarted && step === 'test' && !submitted;
+
+    const clearFullscreenGraceTimers = () => {
+      if (fullscreenExitTimeoutRef.current) {
+        clearTimeout(fullscreenExitTimeoutRef.current);
+        fullscreenExitTimeoutRef.current = null;
+      }
+      if (fullscreenExitIntervalRef.current) {
+        clearInterval(fullscreenExitIntervalRef.current);
+        fullscreenExitIntervalRef.current = null;
+      }
+      setFullscreenGraceSeconds(null);
+      fullscreenPenaltyActiveRef.current = false;
+    };
+
+    if (!examLive) {
+      clearFullscreenGraceTimers();
+      setShowFullscreenExitModal(false);
+      return;
+    }
+
+    const examExpectsFullscreen = (() => {
+      try {
+        return sessionStorage.getItem('exam_expects_fullscreen') === '1';
+      } catch (e) {
+        return false;
+      }
+    })();
+
+    const startFullscreenExitPenalty = () => {
+      if (fullscreenPenaltyActiveRef.current || submittingRef.current) return;
+      fullscreenPenaltyActiveRef.current = true;
+      setShowFullscreenExitModal(true);
+      setFullscreenGraceSeconds(FULLSCREEN_EXIT_GRACE_SEC);
+
+      let remaining = FULLSCREEN_EXIT_GRACE_SEC;
+      fullscreenExitIntervalRef.current = setInterval(() => {
+        remaining -= 1;
+        setFullscreenGraceSeconds(remaining > 0 ? remaining : 0);
+      }, 1000);
+
+      fullscreenExitTimeoutRef.current = setTimeout(() => {
+        if (fullscreenExitIntervalRef.current) {
+          clearInterval(fullscreenExitIntervalRef.current);
+          fullscreenExitIntervalRef.current = null;
+        }
+        fullscreenExitTimeoutRef.current = null;
+        fullscreenPenaltyActiveRef.current = false;
+        setShowFullscreenExitModal(false);
+        setFullscreenGraceSeconds(null);
+
+        if (!getFullscreenElement() && !submittingRef.current) {
+          toast.error(
+            'Your exam was submitted automatically because fullscreen was not restored.'
+          );
+          Promise.resolve(handleSubmitAllSectionsRef.current?.()).catch((e) =>
+            console.warn('Fullscreen auto-submit failed', e)
+          );
+        }
+      }, FULLSCREEN_EXIT_GRACE_SEC * 1000);
+    };
+
+    const onFullscreenChange = () => {
+      const fs = getFullscreenElement();
+      if (fs) {
+        hadFullscreenDuringExamRef.current = true;
+        clearFullscreenGraceTimers();
+        setShowFullscreenExitModal(false);
+        return;
+      }
+
+      const shouldEnforce =
+        hadFullscreenDuringExamRef.current || examExpectsFullscreen;
+      if (!shouldEnforce) return;
+      hadFullscreenDuringExamRef.current = true;
+      startFullscreenExitPenalty();
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    document.addEventListener('MSFullscreenChange', onFullscreenChange);
+
+    if (getFullscreenElement()) {
+      hadFullscreenDuringExamRef.current = true;
+    } else if (examExpectsFullscreen) {
+      hadFullscreenDuringExamRef.current = true;
+      queueMicrotask(() => startFullscreenExitPenalty());
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', onFullscreenChange);
+      if (fullscreenExitTimeoutRef.current) {
+        clearTimeout(fullscreenExitTimeoutRef.current);
+        fullscreenExitTimeoutRef.current = null;
+      }
+      if (fullscreenExitIntervalRef.current) {
+        clearInterval(fullscreenExitIntervalRef.current);
+        fullscreenExitIntervalRef.current = null;
+      }
+    };
+  }, [testStarted, step, submitted]);
 
   // ActivityMonitor -> onViolation handler
   const handleViolation = (key, count = 1, flush = false) => {
@@ -1868,56 +2191,34 @@ const GiveTest = ({ jdId }) => {
   // Submitted / results view
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-3xl w-full">
-          <div className="text-green-500 text-6xl mb-4 text-center">✓</div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">
-            Test Completed Successfully!
-          </h2>
-          <p className="text-gray-600 mb-8 text-center">
-            All sections have been submitted and evaluated.
-          </p>
-
-          {/* <div className="space-y-6">
-            {submissionResults.map((sectionResult, sectionIdx) => (
-              <div key={sectionIdx} className="border rounded-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">
-                  {sectionResult.sectionName} Section
-                </h3>
-                <p className="text-gray-600 mb-4">{sectionResult.result.message}</p>
-
-                {sectionResult.result.evaluations && sectionResult.result.evaluations.length > 0 && (
-                  <div className="space-y-3">
-                    {sectionResult.result.evaluations.map((evaluation, evalIdx) => (
-                      <div
-                        key={evalIdx}
-                        className={`p-4 rounded-lg ${
-                          evaluation.is_correct
-                            ? 'bg-green-50 border-l-4 border-green-500'
-                            : 'bg-red-50 border-l-4 border-red-500'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium text-gray-700">Question {evalIdx + 1}</span>
-                          <span className="text-lg font-bold">{(evaluation.score * 100).toFixed(0)}%</span>
-                        </div>
-                        {evaluation.feedback && (
-                          <p className="text-sm text-gray-600">{evaluation.feedback}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div> */}
-
+      <div className="flex min-h-screen items-center justify-center bg-[#eef0f4] px-4 py-10 font-sans">
+        <div className="relative w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
           <button
-            onClick={() => (window.location.href = '/Candidate-Dashboard')}
-            className="mt-8 w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            type="button"
+            aria-label="Close"
+            onClick={() => { window.location.href = '/Candidate-Dashboard'; }}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
           >
-            Done
+            ✕
           </button>
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.45)]">
+              <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="mb-2 text-xl font-semibold text-[#7C69EF]">Test submitted successfully</h2>
+            <p className="mb-8 text-sm leading-relaxed text-gray-600">
+              Thank you for taking the test. Your responses have been submitted successfully.
+            </p>
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/Candidate-Dashboard'; }}
+              className="w-full rounded-xl bg-gradient-to-r from-[#7C69EF] to-[#a855f7] py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-95"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1980,6 +2281,29 @@ const GiveTest = ({ jdId }) => {
         pauseOnHover
       />
 
+      {showFullscreenExitModal && testStarted && step === 'test' && !submitted && (
+        <div className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+            <h2 className="text-xl font-bold text-gray-900">Return to fullscreen</h2>
+            <p className="mt-3 text-sm leading-relaxed text-gray-600">
+              You left fullscreen during the exam. Click the button below to go back to fullscreen and continue.
+              If you do not return within{' '}
+              <span className="font-semibold text-[#7C69EF]">
+                {fullscreenGraceSeconds ?? FULLSCREEN_EXIT_GRACE_SEC}
+              </span>{' '}
+              seconds, your exam will be submitted automatically.
+            </p>
+            <button
+              type="button"
+              onClick={() => requestDocumentFullscreen()}
+              className="mt-6 w-full rounded-xl bg-[#7C69EF] py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-95"
+            >
+              Enter fullscreen again
+            </button>
+          </div>
+        </div>
+      )}
+
       {showMultipleFaces && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-400 text-black px-4 py-2 rounded shadow">
           🚨 Multiple faces detected — page blurred
@@ -2020,16 +2344,6 @@ const GiveTest = ({ jdId }) => {
 )}
 
 
-      {/* Live Recording Indicator Badge - shows when recording is active and test is running */}
-      {recordingStarted && recordingPermissionGranted && testStarted && !submitted && (
-        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pulse">
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-            <span className="font-semibold text-sm">🎥 Recording Test...</span>
-          </div>
-        </div>
-      )}
-
       {/* Quick button to trigger camera permissions if preview missing */}
       {!submitted && step === 'test' && !mediaAllowed && (
         <div className="fixed top-24 right-4 z-40">
@@ -2042,363 +2356,429 @@ const GiveTest = ({ jdId }) => {
         </div>
       )}
 
-      {/* Manual debug logger button */}
-      {!submitted && step === 'test' && (
-        <div className="fixed top-48 right-4 z-40">
-          <button
-            onClick={logDebugState}
-            className="px-3 py-2 bg-indigo-600 text-white rounded shadow"
-          >
-            Log Debug State
-          </button>
-        </div>
-      )}
-
-      {/* Floating draggable webcam preview (candidate) - rendered during test step or while testStarted */}
-      {!submitted && recordingPermissionGranted && (step === 'test' || testStarted || mediaAllowed || !!window.__candidateCameraStream) && (
-        <WebcamPreview
-          webcamRef={webcamRef}
-          canvasRef={canvasRef}
-          localStream={localStream}
-          streamRef={streamRef}
-          hasVideoFrame={hasVideoFrame}
-          floatingPos={floatingPos}
-          setFloatingPos={setFloatingPos}
-          selectedDeviceId={selectedDeviceId}
-        />
-      )}
-      
-      <div className={`min-h-screen bg-gray-100 py-8 ${showMultipleFaces ? 'filter blur-sm' : ''}`}>
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Section Header */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-bold">
-                    Section {currentSectionIndex + 1} of {sections.length}
-                  </span>
-                  <span className="text-lg font-bold text-gray-800">
-                    {currentSection?.displayName}
-                  </span>
-                </div>
-                <p className="text-gray-600">
-                  Question {currentQuestionIndex + 1} of {totalQuestionsInSection}
-                </p>
-              </div>
-
-              <Timer
-                timeLeft={questionTimeLeft}
-                onTimeUp={handleTimeUp}
-                key={`${currentSectionIndex}-${currentQuestion?.id}`}
-              />
+      <div className={`min-h-screen bg-[#eef0f4] font-sans ${showMultipleFaces ? 'blur-sm' : ''}`}>
+        <div className="mx-auto max-w-[1600px] px-4 py-6">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Online Assessment</p>
+              <h1 className="mt-1 text-2xl font-bold text-gray-900">
+                Welcome, {candidateDisplayName}!
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
             </div>
-
-            {/* Section Progress */}
-            <div className="mb-2">
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Section Progress</span>
-                <span>{sectionPercent}%</span>
-              </div>
-              <div className="bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${sectionPercent}%`,
-                  }}
-                />
-              </div>
+            <div className="flex-1 rounded-2xl bg-white px-6 py-5 text-center shadow-md lg:mx-6">
+              <h2 className="text-lg font-bold text-gray-900">
+                Online Assessment for {assessmentJobTitle}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Duration: {durationHeader} • {sections.length} Sections
+              </p>
             </div>
-
-            {/* Overall progress */}
-            <div className="mt-4">
-              <div className="flex gap-2">
-                {sections.map((section, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex-1 h-2 rounded-full ${
-                      completedSections.has(idx)
-                        ? 'bg-green-500'
-                        : idx === currentSectionIndex
-                        ? 'bg-blue-600'
-                        : 'bg-gray-200'
-                    }`}
-                    title={section.displayName}
-                  />
-                ))}
-              </div>
-              <div className="flex justify-between mt-1 text-xs text-gray-500">
-                {sections.map((section, idx) => (
-                  <span
-                    key={idx}
-                    className={`${
-                      idx === currentSectionIndex
-                        ? 'font-bold text-blue-600'
-                        : completedSections.has(idx)
-                        ? 'text-green-600'
-                        : ''
-                    }`}
-                  >
-                    {section.name}
-                    {completedSections.has(idx) && ' ✓'}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <div className="hidden w-44 shrink-0 lg:block" aria-hidden />
           </div>
 
-          {/* Question Display */}
-          {currentQuestion ? (
-            <div className="mb-6">
-              {(() => {
-                switch (currentQuestion.type) {
-                  case 'mcq':
-                    return (
-                      <McqQuestion
-                        question={currentQuestion}
-                        answer={allAnswers[currentQuestion.id]}
-                        onAnswer={handleAnswerChange}
-                      />
-                    );
-
-                  case 'coding':
-                    return (
-                      <CodingQuestion
-                        question={currentQuestion}
-                        answer={allAnswers[currentQuestion.id]}
-                        onAnswer={handleAnswerChange}
-                      />
-                    );
-
-                  case 'audio':
-                    // Show placeholder if no real audio questions
-                    if (currentQuestion.id === 'audio-placeholder') {
-                      return (
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                          <p className="text-gray-600">{currentQuestion.content.prompt_text || currentQuestion.prompt_text}</p>
-                        </div>
-                      );
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+            {/* Left: question palette */}
+            <aside className="lg:col-span-3">
+              <div className="rounded-2xl bg-white p-5 shadow-md">
+                <h3 className="text-sm font-bold text-gray-800">
+                  Questions ({totalQuestionsInSection})
+                </h3>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {gridQuestionsSlice.map((q, i) => {
+                    const globalIdx = gridSliceStart + i;
+                    const answered = isQuestionAnswered(q);
+                    const visited = visitedQuestionIds.has(q.id);
+                    const qKey = getQuestionKey(q, currentSectionIndex, globalIdx);
+                    const isReview = !!reviewMarks[qKey];
+                    const isCurrent = globalIdx === currentQuestionIndex;
+                    let cell =
+                      'flex h-10 items-center justify-center rounded-lg border-2 text-sm font-semibold transition ';
+                    if (isCurrent) {
+                      cell += 'ring-2 ring-offset-2 ';
+                      cell += isReview ? 'ring-violet-600 ' : 'ring-[#7C69EF] ';
                     }
+                    if (isReview && !isCurrent) {
+                      cell += 'border-violet-400 bg-violet-50 text-violet-900 ';
+                    } else if (answered) {
+                      cell += 'border-emerald-200 bg-emerald-100 text-emerald-900 ';
+                    } else if (visited) {
+                      cell += 'border-amber-200 bg-amber-100 text-amber-900 ';
+                    } else {
+                      cell += 'border-gray-200 bg-gray-100 text-gray-500 ';
+                    }
+                    if (isCurrent && isReview) {
+                      cell += 'bg-violet-50 ';
+                    }
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => setCurrentQuestionIndex(globalIdx)}
+                        className={cell}
+                      >
+                        {globalIdx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                {gridTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-center gap-3 text-gray-600">
+                    <button
+                      type="button"
+                      className="rounded-lg p-1 hover:bg-gray-100"
+                      onClick={() => setQuestionGridPage((p) => Math.max(1, p - 1))}
+                      aria-label="Previous page"
+                    >
+                      &lt;
+                    </button>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7C69EF] text-sm font-bold text-white">
+                      {gridPageClamped}
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-lg p-1 hover:bg-gray-100"
+                      onClick={() => setQuestionGridPage((p) => Math.min(gridTotalPages, p + 1))}
+                      aria-label="Next page"
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                )}
+                <div className="mt-6 space-y-2 border-t border-gray-100 pt-4 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-6 rounded bg-amber-200" />
+                    Visited but not answered
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-6 rounded bg-emerald-200" />
+                    Answered
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-6 rounded bg-gray-200" />
+                    Not visited
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-6 rounded border-2 border-violet-400 bg-violet-50" />
+                    Marked for review
+                  </div>
+                </div>
+              </div>
+            </aside>
 
-                    // Normal audio interview button/modal
-                      return showAudioInterview ? (
-                      <AudioInterview
-                        questions={currentSection?.questions || []}
-                        candidateId={finalCandidateId}
-                        baseUrl={window.REACT_APP_BASE_URL || 'http://127.0.0.1:5000'}
-                        onClose={() => setShowAudioInterview(false)}
-                        onComplete={(qa) => {
-                          setAudioInterviewResults(qa);
-                          setShowAudioInterview(false);
-                          setAudioInterviewDone(true);
-                          toast.success('Audio interview completed.');
+            {/* Center: tabs + question */}
+            <main className="lg:col-span-6">
+              <div className="rounded-2xl bg-white p-5 shadow-md lg:min-h-[520px]">
+                <div className="mb-5 flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4">
+                  {SECTION_TAB_ORDER.map((type) => {
+                    const exists = sections.some((s) => s.type === type);
+                    const active = currentSection?.type === type;
+                    const label =
+                      type === 'mcq'
+                        ? 'MCQ'
+                        : type === 'coding'
+                          ? 'Coding'
+                          : type === 'audio'
+                            ? 'Audio'
+                            : 'Video';
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        disabled={!exists}
+                        onClick={() => goToSectionFromTab(type)}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                          !exists
+                            ? 'cursor-not-allowed text-gray-300'
+                            : active
+                              ? 'bg-[#7C69EF]/15 text-[#5b4dd4]'
+                              : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {(currentSection?.type === 'audio' || currentSection?.type === 'video') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAudioInterviewVisited(true);
+                          if (currentSection?.type === 'audio') setShowAudioInterview(true);
                         }}
-                        remainingTime={questionTimeLeft}
-                        updateRemainingTime={(t) => setQuestionTimeLeft(Number(t))}
-                        onAudioTimeUp={handleTimeUp}
-                      />
-                    ) : (
-                      <div className="bg-white rounded-lg shadow-md p-6">
-                        <button
-                          onClick={() => {
-                            setAudioInterviewVisited(true);
-                            setShowAudioInterview(true);
-                          }}
-                          disabled={audioInterviewDone}
-                          className={`px-6 py-3 rounded-lg transition ${audioInterviewDone ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                        >
-                          {audioInterviewDone ? 'Audio Completed' : '🎙 Start Audio Interview'}
-                        </button>
-                      </div>
-                    );
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#7C69EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#6d5ce0]"
+                      >
+                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-white ring-2 ring-white/80" />
+                        Record
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                  case 'video':
-                    // Check if we've completed all video questions
-                    if (currentQuestionIndex >= totalQuestionsInSection) {
-                      return (
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                          <div className="text-center py-8">
-                            <div className="text-5xl mb-4">✓</div>
-                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Video Interview Complete</h3>
-                            <p className="text-gray-600">All video questions have been answered. Ready to submit your test.</p>
-                          </div>
-                        </div>
-                      );
-                    }
+                {currentQuestionIndex === totalQuestionsInSection - 1 &&
+                  currentSectionIndex === sections.length - 1 && (
+                    <p className="mb-3 text-center text-sm font-medium text-[#7C69EF]">
+                      Final submission — all sections will be submitted
+                    </p>
+                  )}
+                {currentQuestionIndex === totalQuestionsInSection - 1 &&
+                  currentSectionIndex < sections.length - 1 && (
+                    <p className="mb-3 text-center text-sm text-amber-700">
+                      Next: proceed to the next section (you cannot return)
+                    </p>
+                  )}
 
-                    // Show placeholder if no real video questions
-                    if (currentQuestion.id === 'video-placeholder') {
-                      return (
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                          <p className="text-gray-600">
-                            {currentQuestion.content.prompt_text || currentQuestion.prompt_text}
-                          </p>
-                        </div>
-                      );
-                    }
+                {currentQuestion ? (
+                  <div className="min-h-[280px]">
+                    {(() => {
+                      switch (currentQuestion.type) {
+                        case 'mcq':
+                          return (
+                            <McqQuestion
+                              question={currentQuestion}
+                              answer={allAnswers[currentQuestion.id]}
+                              onAnswer={handleAnswerChange}
+                              embedded
+                              questionOrdinal={currentQuestionIndex + 1}
+                            />
+                          );
+                        case 'coding':
+                          return (
+                            <CodingQuestion
+                              question={currentQuestion}
+                              answer={allAnswers[currentQuestion.id]}
+                              onAnswer={handleAnswerChange}
+                              runCodeUrl={`${pythonUrl}/v1/test/run_code`}
+                              embedded
+                              questionOrdinal={currentQuestionIndex + 1}
+                            />
+                          );
+                        case 'audio':
+                          if (currentQuestion.id === 'audio-placeholder') {
+                            return (
+                              <p className="text-sm text-gray-700">
+                                {currentQuestion.content.prompt_text || currentQuestion.prompt_text}
+                              </p>
+                            );
+                          }
+                          if (showAudioInterview) {
+                            return (
+                              <p className="rounded-xl border border-dashed border-[#7C69EF]/40 bg-[#7C69EF]/5 p-6 text-center text-sm text-gray-600">
+                                Audio interview is open in full screen. Complete it there, then return here.
+                              </p>
+                            );
+                          }
+                          return (
+                            <div>
+                              <p className="mb-4 text-base font-semibold text-gray-900">
+                                <span className="text-[#7C69EF]">Q{currentQuestionIndex + 1}.</span>{' '}
+                                {(currentQuestion.prompt_text || currentQuestion.question || '').trim() ||
+                                  'Answer in the audio interview.'}
+                              </p>
+                              <textarea
+                                value={
+                                  typeof allAnswers[currentQuestion.id] === 'string'
+                                    ? allAnswers[currentQuestion.id]
+                                    : ''
+                                }
+                                onChange={(e) => handleAnswerChange(e.target.value)}
+                                className="min-h-[160px] w-full rounded-xl border border-gray-200 bg-[#f3f4f6] p-4 text-sm focus:border-[#7C69EF] focus:outline-none focus:ring-2 focus:ring-[#7C69EF]/20"
+                                placeholder="Optional notes while recording…"
+                              />
+                            </div>
+                          );
+                        case 'video':
+                          if (currentQuestionIndex >= totalQuestionsInSection) {
+                            return (
+                              <div className="py-8 text-center">
+                                <div className="mb-3 text-4xl text-emerald-500">✓</div>
+                                <h3 className="text-lg font-bold text-gray-800">Video interview complete</h3>
+                                <p className="mt-2 text-sm text-gray-600">
+                                  You can submit when you are ready.
+                                </p>
+                              </div>
+                            );
+                          }
+                          if (currentQuestion.id === 'video-placeholder') {
+                            return (
+                              <p className="text-sm text-gray-700">
+                                {currentQuestion.content.prompt_text || currentQuestion.prompt_text}
+                              </p>
+                            );
+                          }
+                          return (
+                            <div>
+                              <p className="mb-4 text-base font-semibold text-gray-900">
+                                <span className="text-[#7C69EF]">Q{currentQuestionIndex + 1}.</span>{' '}
+                                {currentQuestion.prompt_text || currentQuestion.question}
+                              </p>
+                              <textarea
+                                value={
+                                  typeof allAnswers[currentQuestion.id] === 'string'
+                                    ? allAnswers[currentQuestion.id]
+                                    : ''
+                                }
+                                onChange={(e) => handleAnswerChange(e.target.value)}
+                                className="min-h-[180px] w-full rounded-xl border border-gray-200 bg-[#f3f4f6] p-4 text-sm focus:border-[#7C69EF] focus:outline-none focus:ring-2 focus:ring-[#7C69EF]/20"
+                                placeholder="Type your response here…"
+                              />
+                              {currentQuestionIndex === totalQuestionsInSection - 1 && (
+                                <p className="mt-3 text-sm font-medium text-emerald-700">
+                                  Last question — you can submit the test after saving.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        default:
+                          return <p className="text-sm text-gray-600">Unknown question type</p>;
+                      }
+                    })()}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">No questions in this section.</p>
+                )}
 
-                    // Show question and text field for answer
-                    return (
-                      <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="mb-4">
-                          <h3 className="text-lg font-semibold mb-3">Question {currentQuestionIndex + 1} of {totalQuestionsInSection}</h3>
-                          <p className="p-4 bg-gray-100 rounded text-gray-700">
-                            {currentQuestion.prompt_text || currentQuestion.question}
-                          </p>
-                        </div>
-
-                        {/* Answer text field */}
-                        <div className="mb-6">
-                          <label className="block font-semibold mb-2">Your Answer:</label>
-                          <textarea
-                            value={typeof allAnswers[currentQuestion.id] === 'string' ? allAnswers[currentQuestion.id] : ''}
-                            onChange={e => handleAnswerChange(e.target.value)}
-                            className="w-full p-3 border-2 border-gray-300 rounded-lg min-h-[150px] focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            placeholder="Write your detailed answer here..."
-                          />
-                        </div>
-
-                        {/* Completion message for last question */}
-                        {currentQuestionIndex === totalQuestionsInSection - 1 && (
-                          <div className="p-4 bg-green-50 border-l-4 border-green-500 rounded">
-                            <p className="text-green-700 font-medium">
-                              ✓ Last question answered. You can now submit the test.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-
-                  default:
-                    return (
-                      <div className="bg-white rounded-lg shadow-md p-6">
-                        <p className="text-gray-600">Unknown question type</p>
-                      </div>
-                    );
-                }
-              })()}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <p className="text-gray-600">No questions available in this section.</p>
-            </div>
-          )}
-
-          {/* Navigation - hidden for Video section (recorder handles navigation & submission) */}
-          {currentSection?.type !== 'video' && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-center">
-                {currentSection?.type !== 'video' && (
+                <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-5">
                   <button
+                    type="button"
                     onClick={handlePrevious}
                     disabled={currentQuestionIndex === 0}
-                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Previous
                   </button>
-                )}
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={toggleMarkReview}
+                      disabled={!currentQuestion}
+                      className={`rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm ${
+                        isCurrentMarkedForReview
+                          ? 'border-2 border-violet-500 bg-violet-100 text-violet-900'
+                          : 'border border-gray-200 bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {isCurrentMarkedForReview ? 'Marked for review' : 'Mark for Review'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAndNext}
+                      disabled={saveNextDisabled}
+                      className="rounded-xl bg-[#7C69EF] px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#6d5ce0] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {saveNextLabel}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </main>
 
-                <div className="text-sm text-gray-600 text-center">
-                  {currentQuestionIndex === totalQuestionsInSection - 1 &&
-                   currentSectionIndex === sections.length - 1 ? (
-                    <span className="font-medium text-blue-600">
-                      Final submission - All sections will be submitted
-                    </span>
-                  ) : currentQuestionIndex === totalQuestionsInSection - 1 ? (
-                    <div>
-                      <span className="text-amber-600 font-medium">⚠️ Moving to next section</span>
-                      <br />
-                      <span className="text-xs text-gray-500">You cannot go back after proceeding</span>
+            {/* Right: proctoring panel */}
+            <aside className="lg:col-span-3">
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-white p-4 shadow-md">
+                  {recordingStarted && recordingPermissionGranted && (
+                    <p className="mb-2 flex items-center gap-2 text-xs font-medium text-red-600">
+                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                      Recording
+                    </p>
+                  )}
+                  <div className="relative">
+                    {!submitted &&
+                    recordingPermissionGranted &&
+                    (step === 'test' || testStarted || mediaAllowed || !!window.__candidateCameraStream) ? (
+                      <WebcamPreview
+                        variant="embedded"
+                        webcamRef={webcamRef}
+                        canvasRef={canvasRef}
+                        localStream={localStream}
+                        streamRef={streamRef}
+                        hasVideoFrame={hasVideoFrame}
+                        floatingPos={floatingPos}
+                        setFloatingPos={setFloatingPos}
+                        selectedDeviceId={selectedDeviceId}
+                      />
+                    ) : (
+                      <div className="flex aspect-[16/10] max-h-[280px] min-h-[200px] w-full items-center justify-center rounded-xl bg-[#3d3d42] text-sm text-gray-400">
+                        Camera preview unavailable
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      title="Assessment info"
+                      className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-xs font-bold text-white backdrop-blur-sm"
+                    >
+                      i
+                    </button>
+                    <div className="absolute bottom-2 left-2 max-w-[70%] truncate rounded-lg bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {candidateDisplayName}
                     </div>
-                  ) : null}
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-[#7C69EF] px-2.5 py-1 text-xs font-semibold text-white shadow-md">
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 7v5l3 2" strokeLinecap="round" />
+                      </svg>
+                      {typeof questionTimeLeft === 'number' ? `${questionTimeLeft} secs` : '—'}
+                    </div>
+                  </div>
+                  <MicLevelWaveform
+                    key={
+                      (localStream ||
+                        streamRef.current ||
+                        (typeof window !== 'undefined' ? window.__candidateCameraStream : null)
+                      )?.id || 'no-mic-stream'
+                    }
+                    stream={
+                      localStream ||
+                      streamRef.current ||
+                      (typeof window !== 'undefined' ? window.__candidateCameraStream : null)
+                    }
+                  />
                 </div>
 
-                {/* For non-video sections show global Next */}
-                <button
-                  onClick={() => {
-                    // If MCQ or Coding is the last section and we're on its last question, submit the test
-                    if (
-                      (currentSection?.type === 'mcq' || currentSection?.type === 'coding') &&
-                      currentQuestionIndex === totalQuestionsInSection - 1 &&
-                      currentSectionIndex === sections.length - 1
-                    ) {
-                      if (submitting) return;
-                      handleSubmitAllSections().catch(e => console.warn('Submit failed', e));
-                      return;
-                    }
+                <div className="rounded-2xl bg-white p-4 shadow-md">
+                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
+                    <span className="text-lg leading-none">▮▮▮</span>
+                    Internet Speed: Good
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-500">✓</span> Microphone
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-500">✓</span> Camera
+                  </div>
+                </div>
 
-                    const hasVideoSection = sections.some(s => s.type === "video");
+                {currentSection?.type === 'coding' && (
+                  <div className="rounded-2xl bg-white p-4 shadow-md">
+                    <h4 className="text-sm font-bold text-gray-800">Test Cases</h4>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                        Test case 1
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        Test case 2
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-gray-300" />
+                        Test case 3
+                      </li>
+                    </ul>
+                  </div>
+                )}
 
-                    // Prevent skipping the video interview ONLY inside the Video section
-                    if (
-                      hasVideoSection &&
-                      currentSection?.type === "video" &&
-                      !showWebcamInterview &&
-                      currentQuestionIndex === totalQuestionsInSection - 1
-                    ) {
-                      toast.error("Please complete the webcam interview before submitting.");
-                      return;
-                    }
-
-                    // For audio sections, the interview UI handles answers.
-                    // If this is NOT the last section, move to next. If it IS the last section,
-                    // submit only after the audio interview is completed.
-                    if (currentSection?.type === 'audio') {
-                      if (currentSectionIndex < sections.length - 1) {
-                        setCompletedSections(prev => new Set([...prev, currentSectionIndex]));
-                        setCurrentSectionIndex(prev => prev + 1);
-                        setCurrentQuestionIndex(0);
-                      } else {
-                        // last section
-                        if (audioInterviewDone) {
-                          if (submitting) return;
-                          handleSubmitAllSections().catch(e => console.warn('Submit failed', e));
-                        } else {
-                          toast.info('Please complete the audio interview to finish the test.');
-                        }
-                      }
-                      return;
-                    }
-
-                    handleNext();
-                }}
-                disabled={submitting || (currentSection?.type === 'audio' && !audioInterviewVisited)}
-
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
-              >
-                {submitting
-                  ? 'Submitting...'
-                  : currentSection?.type === 'audio'
-                  ? (currentSectionIndex === sections.length - 1
-                      ? (audioInterviewDone ? 'Submit Test' : (audioInterviewVisited ? 'Visit Audio Interview' : 'Visit Audio Interview'))
-                      : (audioInterviewVisited ? 'Go To Next Part' : 'Visit Audio Interview')
-                    )
-                  : ((currentSection?.type === 'mcq' || currentSection?.type === 'coding' || currentSection?.type === 'video') && currentQuestionIndex === totalQuestionsInSection - 1 && currentSectionIndex === sections.length - 1)
-                  ? 'Submit Test'
-                  : currentQuestionIndex === totalQuestionsInSection - 1
-                  ? 'Proceed to Next Section'
-                  : 'Next'}
-              </button>
+                <div className="rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs leading-relaxed text-rose-700">
+                  <span className="mr-1 font-bold">⚠</span>
+                  Warning: Leaving full-screen, switching tabs, or minimizing the window will be flagged.
+                </div>
               </div>
-            </div>
-          )}
-          {/* Show submit button for Video section (especially when it's the final section) */}
-          {currentSection?.type === 'video' && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    if (submitting) return;
-                    handleSubmitAllSections().catch(e => console.warn('Submit failed', e));
-                  }}
-                  disabled={submitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
-                >
-                  {submitting ? 'Submitting...' : (currentSectionIndex === sections.length - 1 ? 'Submit Test' : 'Next')}
-                </button>
-              </div>
-            </div>
-          )}
+            </aside>
+          </div>
         </div>
       </div>
       {/* Global submitting overlay (covers entire test while submitting and stopping recording) */}

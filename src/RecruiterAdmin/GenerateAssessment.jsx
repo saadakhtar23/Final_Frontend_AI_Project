@@ -331,13 +331,13 @@ function GenerateAssessment() {
       )}
 
       {/* Step Progress Bar */}
-      <div className="bg-white rounded-2xl border border-gray-300 px-6 pt-5 pb-7 shadow-md relative">
+      <div className=" rounded-2xl border border-gray-300 px-6 pt-5 pb-7 shadow-md relative">
         <div className="flex items-start justify-between">
           {steps.map((step) => (
             <div key={step.number} className="flex-1 flex flex-col items-center">
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-[15px] font-semibold ${
-                  step.number <= currentStep ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'
+                  step.number <= currentStep ? 'bg-purple-700 text-white' : 'bg-gray-200 text-gray-500'
                 }`}
               >
                 {step.number}

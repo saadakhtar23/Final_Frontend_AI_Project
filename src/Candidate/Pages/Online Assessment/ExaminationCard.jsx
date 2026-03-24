@@ -1,62 +1,138 @@
 function ExaminationCard({ job, handleGiveTest }) {
-    return (
-        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-300 hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
-            <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{job.title}</h2>
+  if (!job) return null;
 
-                <p className="text-red-500 text-sm sm:text-base mb-4">{job.location}</p>
+  // Calculate days left
+  const getDaysLeft = () => {
+    if (!job.endDate) return 0;
 
-                {job.workType && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        <span className="px-3 py-1 text-xs sm:text-sm font-medium text-green-700 bg-green-50 border border-green-300 rounded-xl">
-                            {job.workType}
-                        </span>
-                    </div>
-                )}
+    try {
+      const endDate = new Date(job.endDate);
+      const today = new Date();
 
-                <p className="text-gray-600 text-sm leading-relaxed mb-2">{job.description}</p>
+      const diff = Math.ceil(
+        (endDate - today) / (1000 * 60 * 60 * 24)
+      );
 
-                {job.skills && job.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        {job.skills.map((skill, i) => (
-                            <span key={i} className="px-3 py-1 text-xs sm:text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-xl">
-                                {skill}
-                            </span>
-                        ))}
-                    </div>
-                )}
+      return diff > 0 ? diff : 0;
+    } catch {
+      return 0;
+    }
+  };
 
-                <div className="space-y-2 text-sm sm:text-base mb-4">
-                    <div className="flex">
-                        <span className="font-semibold text-gray-900 min-w-[100px]">From:</span>
-                        <span className="text-gray-700 ml-2">
-                            {job.startDate} at {job.startTime}
-                        </span>
-                    </div>
+  const daysLeft = getDaysLeft();
 
-                    <div className="flex">
-                        <span className="font-semibold text-gray-900 min-w-[100px]">To:</span>
-                        <span className="text-gray-700 ml-2">
-                            {job.endDate} at {job.endTime}
-                        </span>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="relative bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full">
 
-            <hr />
-
-            <div className="flex justify-end">
-                {job.isActive && job.canGiveTest ? (
-                    <button
-                        onClick={() => handleGiveTest(job)}
-                        className={`mt-2 w-[100px] py-2 rounded-2xl font-medium text-sm sm:text-base transition-all duration-300 bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg`}
-                    >
-                        Give Test
-                    </button>
-                ) : null}
-            </div>
+      {/* Days Left Badge */}
+      {daysLeft > 0 && (
+        <div className="absolute top-0 right-0 bg-red-50 text-red-500 px-4 py-1 rounded-lg text-sm font-medium">
+          {daysLeft} days left
         </div>
-    );
+      )}
+
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-3">
+
+          {/* Logo */}
+          <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center font-semibold text-purple-700">
+            {job.company ? job.company.slice(0, 2).toUpperCase() : "NS"}
+          </div>
+
+          {/* Title */}
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">
+              {job.title}
+            </h2>
+
+            <p className="text-xs text-gray-500">
+              {job.company || "Company"} • {job.location}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {job.workType && (
+          <span className="px-2 py-1 text-xs bg-purple-50 text-purple-600 rounded">
+            {job.workType}
+          </span>
+        )}
+
+        {/* <span className="px-2 py-1 text-xs bg-yellow-50 text-yellow-600 rounded">
+          Full Time
+        </span> */}
+
+        <span className="px-2 py-1 text-xs bg-green-50 text-green-600 rounded">
+          Active
+        </span>
+      </div>
+
+      {/* Skills */}
+      <div className="mb-3">
+        <p className="text-xs text-gray-600 mb-2">Skills</p>
+
+        <div className="flex flex-wrap gap-2">
+          {job.skills && job.skills.length > 0 ? (
+            <>
+              {job.skills.slice(0, 3).map((skill, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded"
+                >
+                  {skill}
+                </span>
+              ))}
+
+              {job.skills.length > 3 && (
+                <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
+                  +{job.skills.length - 3}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-gray-400">No skills listed</span>
+          )}
+        </div>
+      </div>
+
+      {/* Time Section */}
+      <div className="flex justify-between items-center bg-gray-100 p-3 rounded-xl mt-auto">
+
+        <div className="text-xs space-y-1">
+          <div>
+            <span className="text-gray-500">From :</span>{" "}
+            <span className="font-semibold">{job.startDate}</span>{" "}
+            <span className="text-blue-600 font-semibold">
+              {job.startTime}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-gray-500">To :</span>{" "}
+            <span className="font-semibold text-red-500">
+              {job.endDate}
+            </span>{" "}
+            <span className="text-blue-600 font-semibold">
+              {job.endTime}
+            </span>
+          </div>
+        </div>
+
+        {/* Button */}
+        {job.isActive && job.canGiveTest && (
+          <button
+            onClick={() => handleGiveTest(job)}
+            className="bg-gradient-to-r from-purple-500 to-indigo-400 text-white text-sm px-5 py-2 rounded-xl font-medium hover:opacity-90 transition"
+          >
+            Give Test
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default ExaminationCard;

@@ -22,7 +22,7 @@ const TestDetails = () => {
   };
 
   const details = [
-    { icon: <CheckCircle className="text-green-500 w-6 h-6" />, text: "Ensure a stable internet connection." },
+    { icon: <CheckCircle className="text-green-500 w-6 h-6" />, text: "Ensure a stable." },
     { icon: <Clock className="text-gray-500 w-6 h-6" />, text: "The exam is timed — once started, you cannot pause or restart." },
     { icon: <Camera className="text-gray-500 w-6 h-6" />, text: "Your webcam and microphone may be used for AI proctoring." },
     { icon: <Ban className="text-red-500 w-6 h-6" />, text: "Switching tabs or using external applications may end the test automatically." },
