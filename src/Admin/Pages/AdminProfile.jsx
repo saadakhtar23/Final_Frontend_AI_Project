@@ -1,88 +1,135 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { superAdminBaseUrl } from '../utils/ApiConstants';
-import banner from "../img/profile-banner.png";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { baseUrl } from "../../utils/ApiConstants";
+import banner from "../../img/profile-banner.png"
+import india from "../../img/ind-icon.png"
 
-const SuperAdminProfile = () => {
+const AdminProfile = () => {
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        role: ''
+        name: "",
+        email: "",
+        role: "",
+        phone: "",
+        isActive: true,
     });
+
     const [originalData, setOriginalData] = useState({});
     const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         const fetchProfileData = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`${superAdminBaseUrl}/superadmin/profile`, {
+                const token = localStorage.getItem("token");
+
+                const response = await axios.get(`${baseUrl}/auth/meAll`, {
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${localStorage.getItem("token")}`
-                    }
+                        Authorization: `Bearer ${token}`,
+                    },
                 });
+
+                console.log("admin profile", response.data);
+
                 const data = response.data;
 
-                console.log(data);
-
-                if (data.status === 'success' && data.data) {
+                if (data.data) {
                     const profileData = {
-                        name: data.data.name || '',
-                        email: data.data.email || '',
-                        role: data.data.role || ''
+                        name: data.data.name || "",
+                        email: data.data.email || "",
+                        role: data.data.role || "",
+                        phone: data.data.phone || "",
+                        isActive: data.data.isActive ?? true,
                     };
+
                     setFormData(profileData);
                     setOriginalData(profileData);
                 }
+
                 setLoading(false);
             } catch (error) {
                 console.error("Error fetching profile data:", error);
                 setLoading(false);
             }
         };
+
         fetchProfileData();
     }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
 
-    const handleSave = async () => {
-        try {
-            setUpdating(true);
-            const response = await axios.put(
-                `${superAdminBaseUrl}/superadmin/update-superadmin`,
-                { name: formData.name, email: formData.email },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${localStorage.getItem("token")}`
-                    }
-                }
-            );
-            const data = response.data;
-            if (data.status === 'success' && data.data) {
-                const updatedData = {
-                    name: data.data.name || formData.name,
-                    email: data.data.email || formData.email,
-                    role: formData.role
-                };
-                setFormData(updatedData);
-                setOriginalData(updatedData);
-            }
-            setUpdating(false);
-        } catch (error) {
-            console.error("Error updating profile:", error);
-            setUpdating(false);
+        if (name === "phone") {
+            const phoneValue = value.replace(/[^0-9]/g, "").slice(0, 10);
+            setFormData((prev) => ({ ...prev, [name]: phoneValue }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
         }
     };
+
+   const handleSave = async () => {
+    setSaving(true);
+    try {
+        const token = localStorage.getItem("token");
+
+        const meResponse = await axios.get(`${baseUrl}/auth/meAll`, {
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const adminId = meResponse.data.data._id;
+
+        const response = await axios.put(
+            `${baseUrl}/admin/admin/${adminId}`,
+            {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log("admin profile updated", response.data);
+
+        if (response.data.data) {
+            const updated = {
+                name: response.data.data.name || "",
+                email: response.data.data.email || "",
+                role: response.data.data.role || "",
+                phone: response.data.data.phone || "",
+                isActive: response.data.data.isActive ?? true,
+            };
+
+            setFormData(updated);
+            setOriginalData(updated);
+        }
+
+        alert("Profile updated successfully!");
+    } catch (error) {
+        console.error("Error saving profile:", error);
+        alert("Failed to update profile");
+    } finally {
+        setSaving(false);
+    }
+};
 
     const handleCancel = () => {
         setFormData(originalData);
     };
+
+    if (loading) {
+        return (
+            <div className="p-8 text-center text-gray-500">Loading...</div>
+        );
+    }
 
     const getInitials = (name) => {
         if (!name) return 'NA';
@@ -95,16 +142,10 @@ const SuperAdminProfile = () => {
         return firstLetter + secondLetter;
     };
 
-    if (loading) {
-        return (
-            <div className="p-8 text-center text-gray-500">Loading...</div>
-        );
-    }
-
     return (
         <div className="overflow-hidden">
 
-            <div className="relative">
+            <div className="relative ">
                 <img src={banner} alt="Banner" />
             </div>
 
@@ -148,22 +189,26 @@ const SuperAdminProfile = () => {
                         />
                     </div>
 
+
                     <div>
                         <label className="text-sm font-medium text-gray-700">
                             Role
                         </label>
+
                         <input
                             name="role"
                             value={formData.role}
-                            disabled
-                            className="mt-2 w-full h-11 px-4 border rounded-lg hover:cursor-not-allowed"
+                            onChange={handleInputChange}
+                            className="mt-2 w-full h-11 px-4 border rounded-lg"
                         />
+
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
                     <button
                         onClick={handleCancel}
+                        disabled={saving}
                         className="px-6 py-2 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50"
                     >
                         Cancel
@@ -171,10 +216,10 @@ const SuperAdminProfile = () => {
 
                     <button
                         onClick={handleSave}
-                        disabled={updating}
+                        disabled={saving}
                         className="px-6 py-2 bg-gradient-to-r from-[#6950BD] to-[#896BE6] text-white rounded-lg hover:bg-purple-700"
                     >
-                        {updating ? 'Updating...' : 'Update Profile'}
+                        {saving ? "Updating..." : "Update Profile "}
                     </button>
                 </div>
 
@@ -183,4 +228,4 @@ const SuperAdminProfile = () => {
     );
 };
 
-export default SuperAdminProfile;
+export default AdminProfile;

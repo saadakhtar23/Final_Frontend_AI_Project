@@ -31,8 +31,8 @@ function DonutScore({ value = 0, variant = "filtered" }) {
   const circumference = 2 * Math.PI * r;
   const dash = (pct / 100) * circumference;
 
-  const trackStroke = variant === "filtered" ? "#d9d6fe" : "#fee2e2";
-  const textColor = variant === "filtered" ? "text-indigo-700" : "text-red-600";
+  const trackStroke = variant === "filtered" ? "#bbf7d0" : "#fee2e2";
+  const textColor = variant === "filtered" ? "text-green-700" : "text-red-600";
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -40,9 +40,9 @@ function DonutScore({ value = 0, variant = "filtered" }) {
         <svg width="192" height="192" viewBox="0 0 176 176" className="absolute inset-0">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#c4b5fd" />
-              <stop offset="50%" stopColor="#8b5cf6" />
-              <stop offset="100%" stopColor="#7c3aed" />
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="50%" stopColor="#22c55e" />
+              <stop offset="100%" stopColor="#16a34a" />
             </linearGradient>
           </defs>
 

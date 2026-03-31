@@ -626,9 +626,9 @@ function AdminDashboard() {
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9e9e9e', fontSize: 12 }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9e9e9e', fontSize: 12 }} />
                       <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                      <Area type="monotone" dataKey="candidates" stroke="#ff8a9a" strokeWidth={2} fillOpacity={1} fill="url(#colorCand)" dot={{ r: 4, fill: '#fff', stroke: '#ff8a9a', strokeWidth: 2 }} />
-                      <Area type="monotone" dataKey="jd" stroke="#8280ff" strokeWidth={2} fillOpacity={1} fill="url(#colorJd)" dot={{ r: 4, fill: '#fff', stroke: '#8280ff', strokeWidth: 2 }} />
-                      <Area type="monotone" dataKey="offers" stroke="#c58fff" strokeWidth={2} fillOpacity={1} fill="url(#colorOffers)" dot={{ r: 4, fill: '#fff', stroke: '#c58fff', strokeWidth: 2 }} />
+                      <Area type="monotone" dataKey="candidates" stroke="#ff8a9a" strokeWidth={2} fillOpacity={1} fill="url(#colorCand)" dot={{ r: 4, fill: '#fff', stroke: '#ff8a9a', strokeWidth: 2 }} name="Candidates" />
+                      <Area type="monotone" dataKey="jd" stroke="#8280ff" strokeWidth={2} fillOpacity={1} fill="url(#colorJd)" dot={{ r: 4, fill: '#fff', stroke: '#8280ff', strokeWidth: 2 }} name="JD" />
+                      <Area type="monotone" dataKey="offers" stroke="#c58fff" strokeWidth={2} fillOpacity={1} fill="url(#colorOffers)" dot={{ r: 4, fill: '#fff', stroke: '#c58fff', strokeWidth: 2 }} name="Requisitions" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

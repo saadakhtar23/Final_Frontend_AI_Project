@@ -11,7 +11,7 @@ import {
 import user from '../../img/man-head.png';
 import logout from '../../img/power3.png';
 import axios from "axios";
-import { baseUrl } from "../../utils/ApiConstants";
+import { baseUrl } from '../../utils/ApiConstants';
 
 const RMGSidebar = ({ isOpen = true }) => {
   const navigate = useNavigate();
@@ -240,7 +240,7 @@ const RMGSidebar = ({ isOpen = true }) => {
             <button
               onClick={() => {
                 setIsProfileMenuOpen(false);
-                navigate('/profile');
+                navigate('/RMGAdmin-Dashboard/RMGProfile');
               }}
               className={[
                 'w-full flex items-center gap-3',

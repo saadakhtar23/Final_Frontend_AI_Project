@@ -90,6 +90,8 @@ import LoadingScreen from '../src/components/MainLoader.jsx';
 import JDDetail from './components/JDDetail.jsx';
 import ApplyToJob from './Candidate/Pages/ApplyToJob.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
+import AdminProfile from './Admin/Pages/AdminProfile.jsx';
+import RMGProfile from './RMGAdmin/Pages/RMGProfile.jsx';
 
 
 
@@ -143,6 +145,7 @@ const App = () => {
               <Route path='RMGManagement' element={<RMGManagement />} />
               <Route path='Tickets' element={<AdminTickets />} />
               <Route path='RaiseTickets' element={<RaiseTickets />} />
+              <Route path='AdminProfile' element={<AdminProfile />} />
             </Route>
           </Route>
 
@@ -160,6 +163,7 @@ const App = () => {
               <Route path="AssignedRecruiters/SeeHistory" element={<SeeHistory />} />
               <Route path="RMGRaiseTickets/RMGSupportTickets" element={<RMGSupportTickets />} />
               <Route path="RMGRaiseTickets" element={<RMGRaiseTickets />} />
+              <Route path="RMGProfile" element={<RMGProfile />} />
             </Route>
           </Route>
 

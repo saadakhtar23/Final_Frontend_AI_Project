@@ -1,17 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { baseUrl } from '../../utils/ApiConstants';
-import { Check, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import banner from "../../img/profile-banner.png";
+import india from "../../img/ind-icon.png";
 
 function CandidateProfile() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
-        resume: '',
-        skills: '',
-        yearsOfExperience: '',
-        professionalSummary: '',
+        resume: ''
     });
     const [originalData, setOriginalData] = useState({});
     const [resumeFile, setResumeFile] = useState(null);
@@ -29,15 +28,12 @@ function CandidateProfile() {
                 });
                 const candidate = res.data.candidate;
                 console.log(candidate);
-                
+
                 const profileData = {
                     name: candidate.name || '',
                     email: candidate.email || '',
                     phone: candidate.phone || '',
-                    resume: candidate.resume || '',
-                    skills: Array.isArray(candidate.skills) ? candidate.skills.join(', ') : '',
-                    yearsOfExperience: candidate.yearsOfExperience != null ? String(candidate.yearsOfExperience) : '',
-                    professionalSummary: candidate.professionalSummary || '',
+                    resume: candidate.resume || ''
                 };
                 setFormData(profileData);
                 setOriginalData(profileData);
@@ -71,26 +67,19 @@ function CandidateProfile() {
             const token = localStorage.getItem("candidateToken");
             const formDataToSend = new FormData();
             formDataToSend.append("phone", formData.phone);
-            formDataToSend.append("skills", formData.skills || '');
-            formDataToSend.append("yearsOfExperience", formData.yearsOfExperience || '');
-            formDataToSend.append("professionalSummary", formData.professionalSummary || '');
             if (resumeFile) formDataToSend.append("resume", resumeFile);
-            
+
             const res = await axios.put(`${baseUrl}/candidate/profile/me`, formDataToSend, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            
-            const c = res.data.candidate;
+
             const updatedData = {
                 ...formData,
-                phone: c.phone || '',
-                resume: c.resume || '',
-                skills: Array.isArray(c.skills) ? c.skills.join(', ') : (formData.skills || ''),
-                yearsOfExperience: c.yearsOfExperience != null ? String(c.yearsOfExperience) : '',
-                professionalSummary: c.professionalSummary || '',
+                phone: res.data.candidate.phone || '',
+                resume: res.data.candidate.resume || ''
             };
             setFormData(updatedData);
             setOriginalData(updatedData);
@@ -110,184 +99,146 @@ function CandidateProfile() {
 
     const getInitials = (name) => {
         if (!name) return 'NA';
-        const words = name.trim().split(' ');
+        const words = name.trim().split(/\s+/);
         if (words.length === 1) {
-            return words[0][0].toUpperCase();
+            return words[0][0]?.toUpperCase() || 'N';
         }
-        return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+        const firstLetter = words[0][0]?.toUpperCase() || '';
+        const secondLetter = words[1][0]?.toUpperCase() || '';
+        return firstLetter + secondLetter;
     };
 
     if (loading) {
         return (
-            <div className="p-4 md:p-6 lg:p-8 shadow-[0px_0px_10px_0px_rgba(0,_0,_0,_0.1)] max-w-3xl mx-auto rounded-xl">
-                <p className="text-center text-gray-500">Loading...</p>
-            </div>
+            <div className="p-8 text-center text-gray-500">Loading...</div>
         );
     }
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 shadow-[0px_0px_10px_0px_rgba(0,_0,_0,_0.1)] max-w-3xl mx-auto rounded-xl bg-white">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">Profile</h1>
+        <div className="overflow-hidden">
 
-            <div className="flex flex-col md:flex-row items-center mb-8 md:space-x-8">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-purple-500 rounded-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold mb-4 md:mb-0">
-                    {getInitials(formData.name)}
-                </div>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                    <button className="flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                        <span>Upload Image</span>
-                    </button>
-                    <button className="flex items-center justify-center space-x-2 px-4 py-2 border border-red-300 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors">
-                        <span>Delete</span>
-                    </button>
+            <div className="relative">
+                <img src={banner} alt="Banner" />
+            </div>
+
+            <div className="relative flex left-15">
+                <div className="-mt-12 relative">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-gradient-to-br from-[#6950BD] to-[#896BE6] flex items-center justify-center">
+                        <span className="text-white text-2xl font-bold select-none">
+                            {getInitials(formData.name)}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <form className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name
-                    </label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        readOnly
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
-                    />
-                </div>
+            <div className="p-6 space-y-6">
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                    </label>
-                    <div className="relative">
+                <div className="grid md:grid-cols-2 gap-6">
+
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            disabled
+                            className="mt-2 w-full h-11 px-4 border rounded-lg hover:cursor-not-allowed"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">
+                            Email
+                        </label>
                         <input
                             type="email"
                             name="email"
                             value={formData.email}
-                            readOnly
-                            className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                            disabled
+                            className="mt-2 w-full h-11 px-4 border rounded-lg hover:cursor-not-allowed"
                         />
-                        <Check className="absolute right-3 top-2.5 h-5 w-5 text-green-500" />
                     </div>
-                </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone <span className="text-xs text-purple-500">(Editable)</span>
-                    </label>
-                    <input
-                        type="text"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        placeholder="Enter your phone number"
-                        maxLength={10}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">
+                            Phone No.
+                        </label>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Skills for job matching <span className="text-xs text-purple-500">(comma-separated)</span>
-                    </label>
-                    <input
-                        type="text"
-                        name="skills"
-                        value={formData.skills}
-                        onChange={handleInputChange}
-                        placeholder="e.g. React, Node.js, MongoDB, AWS"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Used to match you with jobs by requirements and descriptions.</p>
-                </div>
+                        <div className="flex mt-2">
+                            <div className="flex items-center px-3 w-22 border rounded-l-lg">
+                                <img src={india} alt="India" className="w-5 h-5 mr-2" />
+                                +91
+                            </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Years of experience <span className="text-xs text-purple-500">(optional)</span>
-                    </label>
-                    <input
-                        type="number"
-                        name="yearsOfExperience"
-                        value={formData.yearsOfExperience}
-                        onChange={handleInputChange}
-                        placeholder="e.g. 3"
-                        min={0}
-                        max={60}
-                        step={0.5}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Professional summary <span className="text-xs text-purple-500">(from your resume)</span>
-                    </label>
-                    <textarea
-                        name="professionalSummary"
-                        value={formData.professionalSummary}
-                        onChange={handleInputChange}
-                        rows={4}
-                        placeholder="Paste a short summary or key phrases from your resume — we match these to job descriptions."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y min-h-[100px]"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Resume <span className="text-xs text-purple-500">(Editable)</span>
-                    </label>
-                    
-                    {formData.resume && (
-                        <div className="mb-3">
-                            <a
-                                href={formData.resume}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 transition-colors"
-                            >
-                                <FileText size={18} />
-                                View Current Resume
-                            </a>
+                            <input
+                                type="text"
+                                name="phone"
+                                value={formData.phone}
+                                onChange={handleInputChange}
+                                className="w-full h-11 px-4 border rounded-r-lg focus:outline-none bg-white"
+                                maxLength={10}
+                                placeholder="Enter your phone number"
+                            />
                         </div>
-                    )}
-                    
-                    <div className="relative">
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">
+                            Resume
+                        </label>
+
+
                         <input
                             ref={resumeRef}
                             type="file"
                             accept=".pdf,.doc,.docx"
                             onChange={handleResumeChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200"
+                            className="mt-2 w-full h-11 px-4 border rounded-lg focus:outline-none bg-white flex items-center leading-[2.75rem] file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 file:mt-1.5"
                         />
                         {resumeFile && (
-                            <p className="mt-2 text-sm text-green-600">
+                            <p className="mt-1 text-sm text-green-600">
                                 Selected: {resumeFile.name}
                             </p>
+                        )}
+
+
+                        {formData.resume && (
+                            <div className="mt-2 mb-2">
+                                <a
+                                    href={formData.resume}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 transition-colors"
+                                >
+                                    <FileText size={18} />
+                                    View Current Resume
+                                </a>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 pt-6">
+                <div className="flex justify-end gap-4 pt-4">
                     <button
-                        type="button"
                         onClick={handleCancel}
                         disabled={saving}
-                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="px-6 py-2 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50"
                     >
                         Cancel
                     </button>
+
                     <button
-                        type="button"
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        className="px-6 py-2 bg-gradient-to-r from-[#6950BD] to-[#896BE6] text-white rounded-lg hover:bg-purple-700"
                     >
-                        {saving ? 'Saving...' : 'Save'}
+                        {saving ? "Updating..." : "Update Profile"}
                     </button>
                 </div>
-            </form>
+
+            </div>
         </div>
     );
 }
